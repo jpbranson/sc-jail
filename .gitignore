@@ -1,0 +1,16 @@
+.venv/
+.reference/
+.runtime/
+data/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.env
+*.tfstate*
+.terraform/
+*.tfvars
+!*.tfvars.example
+dist/
+build/

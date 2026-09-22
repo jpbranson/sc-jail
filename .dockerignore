@@ -1,0 +1,6 @@
+*
+!requirements.lock
+!pyproject.toml
+!src/
+!src/**
+src/**/__pycache__

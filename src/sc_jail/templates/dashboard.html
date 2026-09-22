@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Shelby County jail population observations and source freshness.">
+  <title>Shelby County jail</title>
+  <style>{{ dashboard_assets.css | safe }}</style>
+</head>
+<body>
+<header><h1>Shelby County jail</h1><p>Population observations</p></header>
+<div class="layout">
+  <aside>
+    <form method="get">
+      <label for="days">Population time range</label>
+      <select id="days" name="days">
+        {% for value, label in [(1,'Last 24 hours'),(7,'Last 7 days'),(30,'Last 30 days'),(90,'Last 90 days')] %}
+        <option value="{{ value }}" {% if days == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Update view</button>
+    </form>
+    <a class="download" href="/history.csv?days={{ days }}">Download aggregate CSV</a>
+    <hr>
+    <h2>Collection</h2>
+    <p>Every 15 minutes</p>
+    <p>Times shown in Memphis time. This page refreshes every 60 seconds.</p>
+    <hr>
+    <h2>About the sources</h2>
+    <p><a href="https://imljail.shelbycountytn.gov/IML" target="_blank" rel="noopener">IML roster</a><br>
+      Distinct permanent IDs with no release date, or a release date after today.</p>
+    <p><a href="https://xfer.shelbycountytn.gov/" target="_blank" rel="noopener">In-jail report</a><br>
+      Distinct booking numbers in the county's SCSO-InJail spreadsheet.</p>
+    <p>These measures can differ. Source updates may lag actual jail activity.</p>
+  </aside>
+  <main>
+    <section class="metrics" aria-label="Latest population observations">
+      {% for name, title, unit in [('iml','IML roster','people'),('xfer','In-jail report','bookings')] %}
+      {% set source = sources.get(name, {}) %}{% set current = source.get('current', {}) %}
+      <article class="metric">
+        <h2>{{ title }}</h2>
+        <p class="value">{{ current.get('population') | number }} <span>{{ unit }}</span></p>
+        <p class="status {{ health[name][1] }}">{{ health[name][0] }}</p>
+        <p>Collected {{ source.get('last_success') | localtime }}</p>
+        {% if name == 'xfer' and current.get('source_updated_at') %}
+        <p>File updated {{ current.source_updated_at | localtime }}</p>
+        {% endif %}
+        {% if source.get('error') %}<p class="notice">{{ source.error }}. Showing the last complete observation.</p>{% endif %}
+      </article>
+      {% endfor %}
+    </section>
+    <section class="panel">
+      <h2>Population over time</h2>
+      <p class="caption">IML counts people; the in-jail report counts bookings. Gaps indicate missed collections.</p>
+      <div class="plot-frame"><img class="plot" data-kind="population" data-days="{{ days }}"
+        src="{{ url_for('chart', kind='population', days=days, width=360) }}" width="360" height="370"
+        alt="Population history comparing people in the IML roster and bookings in the in-jail report. Download the aggregate CSV for the underlying values."></div>
+      <noscript><p><a href="/chart/population.svg?days={{ days }}&amp;width=1000">Open population chart</a></p></noscript>
+    </section>
+    <section class="panel">
+      <h2>Changes in the IML roster</h2>
+      <p class="caption">People appearing or disappearing between consecutive observations. These are observed changes, not confirmed admissions or releases.</p>
+      <div class="plot-frame"><img class="plot" data-kind="changes" data-days="{{ days }}"
+        src="{{ url_for('chart', kind='changes', days=days, width=360) }}" width="360" height="370"
+        alt="People appearing above zero and disappearing below zero between consecutive IML collections."></div>
+      <noscript><p><a href="/chart/changes.svg?days={{ days }}&amp;width=1000">Open roster changes chart</a></p></noscript>
+    </section>
+    <section class="panel" aria-labelledby="repeat-title">
+      <h2 id="repeat-title">Repeat visits</h2>
+      <p class="caption">A visit is a distinct booking for the same IML permanent ID. Seeing the same booking at multiple collections counts once. These charts use all archived observations, independent of the population time range.</p>
+      {% if repeats.get('error') %}<p class="notice">{{ repeats.error }}.</p>{% endif %}
+      {% if repeats.get('available') %}
+      <p class="caption">Observed {{ repeats.coverage_start | localtime }} through {{ repeats.through | localtime }}. Earlier visits we never observed are not included.</p>
+      <div class="repeat-metrics">
+        <article class="metric">
+          <h3>People with repeat visits</h3>
+          <p class="value">{{ repeats.repeat_people | number }}</p>
+          <p>of {{ repeats.people_seen | number }} people with consistent IDs</p>
+        </article>
+        <article class="metric">
+          <h3>Visits by those people</h3>
+          <p class="value">{{ repeats.repeat_bookings | number }}</p>
+          <p>{{ repeats.additional_visits | number }} visits after their first observed booking</p>
+        </article>
+        <article class="metric">
+          <h3>Median time between visits</h3>
+          <p class="value">{% if repeats.median_days_between_visits is not none %}{{ '%g' | format(repeats.median_days_between_visits) }} <span>days</span>{% else %}—{% endif %}</p>
+          <p>{{ repeats.measured_intervals | number }} intervals with usable dates</p>
+        </article>
+      </div>
+      <p>{{ repeats.people_once | number }} people have one observed booking. {{ repeats.bookings_seen | number }} distinct bookings have been observed in total.</p>
+      {% else %}
+      <p class="notice">Repeat-visit history is being prepared. Counts will appear after the first completed calculation.</p>
+      {% endif %}
+      <div class="repeat-charts">
+        <div>
+          <h3>Visits per returning person</h3>
+          <p class="caption">Number of distinct bookings for people observed on two or more bookings.</p>
+          <div class="plot-frame"><img class="plot" data-kind="repeat-visits" data-days="{{ days }}"
+        src="{{ url_for('chart', kind='repeat-visits', days=days, width=360) }}" width="360" height="370"
+            alt="Distribution of people with two, three, four, or five or more distinct bookings. Exact counts are in the chart values below."></div>
+          <noscript><p><a href="/chart/repeat-visits.svg?width=1000">Open repeat visits chart</a></p></noscript>
+        </div>
+        <div>
+          <h3>Time between visits</h3>
+          <p class="caption">Calendar days from the prior release date to the next commitment date, using IML's published dates.</p>
+          <div class="plot-frame"><img class="plot" data-kind="visit-intervals" data-days="{{ days }}"
+        src="{{ url_for('chart', kind='visit-intervals', days=days, width=360) }}" width="360" height="370"
+            alt="Distribution of calendar days between a prior release and the next commitment. Exact interval counts are in the chart values below."></div>
+          <noscript><p><a href="/chart/visit-intervals.svg?width=1000">Open time between visits chart</a></p></noscript>
+        </div>
+      </div>
+      {% if repeats.get('available') %}
+      <p class="caption">{{ repeats.measured_intervals | number }} of {{ repeats.additional_visits | number }} repeat intervals have usable dates; {{ repeats.missing_date_intervals | number }} lack required dates and {{ repeats.invalid_date_intervals | number }} have overlapping or ambiguous dates. Same-day intervals are zero calendar days, not a measured number of hours.</p>
+      {% if repeats.excluded_bookings %}<p class="notice">{{ repeats.excluded_bookings | number }} bookings are excluded because their person identifiers conflict.</p>{% endif %}
+      <details class="chart-values">
+        <summary>View repeat-visit chart values</summary>
+        <div class="repeat-charts">
+          <div class="table-frame"><table>
+            <thead><tr><th scope="col">Visits per returning person</th><th scope="col">People</th></tr></thead>
+            <tbody>{% for row in repeats.visit_distribution %}<tr><th scope="row">{{ row.label }}</th><td>{{ row.count | number }}</td></tr>{% endfor %}</tbody>
+          </table></div>
+          <div class="table-frame"><table>
+            <thead><tr><th scope="col">Time between visits</th><th scope="col">Intervals</th></tr></thead>
+            <tbody>{% for row in repeats.interval_distribution %}<tr><th scope="row">{{ row.label }}</th><td>{{ row.count | number }}</td></tr>{% endfor %}</tbody>
+          </table></div>
+        </div>
+      </details>
+      {% endif %}
+      <p class="caption">People are linked only by IML permanent ID. XFER does not supply that identifier. These are observed booking histories, not a complete lifetime history or a recidivism rate.</p>
+    </section>
+    <section class="panel">
+      <h2>Latest source details</h2>
+      <div class="table-frame"><table>
+        <thead><tr><th scope="col">Measure</th><th scope="col">IML roster</th><th scope="col">In-jail report</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Records collected</th><td>{{ sources.get('iml',{}).get('current',{}).get('listed_records') | number }}</td><td>{{ sources.get('xfer',{}).get('current',{}).get('charge_rows') | number }} charge rows</td></tr>
+          <tr><th scope="row">Distinct people listed</th><td>{{ sources.get('iml',{}).get('current',{}).get('listed_people') | number }}</td><td>Not identified by a permanent ID</td></tr>
+          <tr><th scope="row">Last attempt</th><td>{{ sources.get('iml',{}).get('last_attempt') | localtime }}</td><td>{{ sources.get('xfer',{}).get('last_attempt') | localtime }}</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+    <section class="panel">
+      <h2>Case detail collection</h2>
+      {% set detail = supplements.get('iml_details', {}) %}
+      {% set court = supplements.get('xfer_courts', {}) %}
+      {% set d = detail.get('current', {}) %}{% set c = court.get('current', {}) %}
+      <p class="caption">Population is checked every 15 minutes. Individual pages refresh in batches, aiming to revisit each booking within 24 hours. Court folders are checked each cycle; reports download when new or changed, with a daily verification.</p>
+      <div class="table-frame"><table>
+        <thead><tr><th scope="col">Measure</th><th scope="col">IML individual pages</th><th scope="col">XFER court reports</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Status</th><td class="status {{ supplemental_health['iml_details'][1] }}">{{ supplemental_health['iml_details'][0] }}</td><td class="status {{ supplemental_health['xfer_courts'][1] }}">{{ supplemental_health['xfer_courts'][0] }}</td></tr>
+          <tr><th scope="row">Coverage</th><td>{{ d.get('available') | number }} of {{ d.get('eligible') | number }} listed bookings</td><td>{{ c.get('archived_files') | number }} archived / {{ c.get('listed_files') | number }} currently listed reports</td></tr>
+          <tr><th scope="row">Up to date</th><td>{{ d.get('fresh') | number }} checked within {{ d.get('refresh_hours',24) | int }} hours</td><td>{{ c.get('parsed_files') | number }} parsed reports</td></tr>
+          <tr><th scope="row">Awaiting collection or refresh</th><td>{{ d.get('pending') | number }} bookings</td><td>{{ c.get('pending') | number }} reports</td></tr>
+          <tr><th scope="row">Last collection pass</th><td>{{ detail.get('last_success') | localtime }}</td><td>{{ court.get('last_success') | localtime }}</td></tr>
+        </tbody>
+      </table></div>
+      {% if detail.get('error') %}<p class="notice">IML details: {{ detail.error }}.</p>{% endif %}
+      {% if court.get('error') %}<p class="notice">Court reports: {{ court.error }}.</p>{% endif %}
+      {% if c.get('directories',{}).get('/GS-CriminalCourtDispositions',{}).get('status') == 'empty' %}<p>No disposition files are currently published in the monitored folder.</p>{% endif %}
+      <p class="caption">Coverage describes the current roster and file listings. Earlier collected versions remain in the private archive. Individual records are available through private exports.</p>
+    </section>
+    <footer>Counts reflect the county's published records at collection time. Release dates in IML have day-level precision. Person-level records are not displayed here.</footer>
+  </main>
+</div>
+<script>{{ dashboard_assets.js | safe }}</script>
+</body>
+</html>

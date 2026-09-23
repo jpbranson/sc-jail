@@ -54,10 +54,10 @@ backup no longer contains the full history.
 ## Local setup
 
 Requires Python 3.12 or newer; development and the container use 3.13.
-The launcher below starts collection, a dashboard, and a temporary tunnel; the
-last command installs automatic local restart. These are not needed to operate
-the deployed cloud services. For local work, leave `SCJ_BUCKET` unset and use a
-separate `SCJ_DATA_DIR` if the cutover backup should remain unchanged.
+The launcher below starts collection and a dashboard. These are not needed to
+operate the deployed cloud services. The example selects a separate local archive
+under the ignored `data/` directory so development does not change the cutover
+backup or connect to the active cloud archive.
 
 PowerShell:
 
@@ -66,18 +66,26 @@ py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
 .\.venv\Scripts\python.exe -m pip install -r requirements-build.lock
 .\.venv\Scripts\python.exe -m pip install --no-build-isolation --no-deps -e .
-.\scripts\start-local.ps1
-.\scripts\install-local-task.ps1
+Remove-Item Env:SCJ_BUCKET -ErrorAction SilentlyContinue
+$env:SCJ_DATA_DIR = Join-Path (Get-Location) 'data\development'
+.\scripts\start-local.ps1 -NoTunnel
 ```
 
-The existing workspace already has these dependencies and a verified
-Cloudflare `cloudflared` binary under `.runtime/`. On a new machine, install
-`cloudflared` from its official release and put the executable at
-`.runtime/cloudflared.exe`, or run a tunnel separately:
+Omit `-NoTunnel` to also start a temporary public tunnel when
+`.runtime/cloudflared.exe` is present. This workspace already has the binary.
+On a new machine, install `cloudflared` from its official release and put the
+executable there, or run a tunnel separately:
 
 ```powershell
 cloudflared tunnel --url http://127.0.0.1:8050
 ```
+
+Automatic local restart is optional: `scripts/install-local-task.ps1` registers
+`SC-Jail-Local`, which runs the launcher every minute while the user is signed in.
+It does not save the current shell's `SCJ_DATA_DIR`, `SCJ_BUCKET`, or `-NoTunnel`
+choice. Configure the intended archive in the scheduled task's environment before
+enabling it. Without archive overrides, its launcher uses `data/` and starts any
+available tunnel. Keep this task disabled for the cloud deployment.
 
 Direct commands also work on Linux/macOS using the environment's Python:
 
@@ -119,6 +127,12 @@ launchers.
 | `PORT` | `8050` | Server port unless `--port` is provided |
 | `SCJ_IML_TIMEOUT_SECONDS` | `420` | IML roster scan budget in seconds (maximum 480) |
 | `SCJ_IML_PAGE_WORKERS` | `2` | Concurrent IML roster page requests (1 or 2) |
+| `SCJ_BUILD_REVISION` | `development` | Provenance identifier; the deployment supplies a source-content hash at image build time |
+
+Supplemental batch, budget, and refresh variables are listed in
+[case-data configuration](docs/CASE_DATA.md#configuration). `SCJ_BUCKET` takes
+precedence over `SCJ_DATA_DIR`; local relative paths resolve from the working
+directory, which the PowerShell launcher sets to the repository root.
 
 Both county appliances require the legacy TLS initial-handshake option.
 Certificate and hostname checks remain enabled; no global TLS settings change.
@@ -142,6 +156,7 @@ data/
   private/blobs/...                 # compressed originals and checkpoint data
   private/legacy/observations/...   # original manifests retained during migration
   private/court-reports/...         # immutable raw/normalized court report versions
+  private/analytics/...             # repeat-visit registry and resumable progress
   private/repairs/...               # backups before derived-data corrections
   private/failures/...              # durable failed-attempt records
 ```
@@ -207,8 +222,11 @@ fixtures contain only invented records.
 
 Cloud Build runs the same tests and lint checks before building a deployable
 image. Runtime, development, build-tool, and container-base versions are pinned.
-To deliberately refresh runtime dependencies, run `python scripts/lock_dependencies.py`,
-review `requirements.lock`, and repeat the checks above. See the
+To refresh runtime dependencies, first update the direct pins in `pyproject.toml`
+as needed, then run `python scripts/lock_dependencies.py`, review `requirements.lock`,
+and repeat the checks above on Python 3.13 and Linux before deployment. That script
+does not regenerate `requirements-dev.lock` or `requirements-build.lock`; update
+those pins explicitly when changing test or build tools. See the
 [technical audit and refactoring decisions](docs/AUDIT.md) for the recovery,
 backup, performance, and failure-mode changes.
 

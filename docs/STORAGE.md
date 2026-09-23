@@ -96,7 +96,11 @@ raw-archive deletion is configured. See [backup and restoration](CLOUD.md#backup
 
 Verification replays every observation in chronological order. Missing data or
 checksum failures stop verification rather than silently replacing history.
-After migration, verify a real collection and the public status endpoint.
+`--verify-only` leaves observations and projections unchanged but still acquires
+the collector lease, so a cloud identity needs read access plus write access to
+`private/collector-lease.json`. Run it against a separate recovery copy or during
+paused maintenance. After migration, verify a real collection and the public
+status endpoint.
 
 ## Rebuild derived state
 

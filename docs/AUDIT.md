@@ -3,6 +3,8 @@
 Reviewed against baseline commit `4c0b2f5`. The recommendations below informed the
 0.2.0 changes. Findings distinguish a demonstrated failure path from a possible
 operational failure; they do not imply that production data was already lost.
+The [0.2.0 release record](RELEASE_0_2_0.md) documents deployment and verification
+of these changes on September 23, 2026 UTC.
 
 ## Problem and current architecture
 

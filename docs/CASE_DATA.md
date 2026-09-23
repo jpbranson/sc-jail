@@ -1,9 +1,11 @@
 # Case detail and court-report collection
 
-Population collection still runs every 15 minutes. After both population
-adapters have committed their results, the same process spends bounded time on
-court reports and IML individual pages. There is no additional cloud service,
-database, or Scheduler job.
+Population collection runs every 15 minutes. After attempting both population
+sources and committing each successful result, the same process spends bounded
+time on court reports and then IML individual pages. A population failure does
+not by itself block this work: details can use the last complete roster for up
+to two hours, subject to the remaining budget. Case collection adds no separate
+cloud service, database, or Scheduler job.
 
 ## IML individual pages
 
@@ -22,8 +24,8 @@ Dates, amounts, case numbers, and source labels retain their published meaning.
 Do not sum repeated bond values across charge rows. Repeated charges and aliases
 are preserved. Names are not used to join people or cases.
 
-Each pass attempts at most 80 pages within 120 seconds. New/unfetched bookings,
-changed roster entries, and then oldest overdue pages receive priority. A failed
+By default, each pass attempts at most 80 pages within 120 seconds. New/unfetched
+bookings, changed roster entries, and then oldest overdue pages receive priority. A failed
 page waits an hour before another attempt; three consecutive page failures end
 the batch. The target revisit interval is 24 hours, subject to source availability
 and the execution budget. Detail-only changes are found on that rotation, not
@@ -48,8 +50,8 @@ The following public folders are monitored each cycle:
 | StateCriminalCourtCalendar | Pending hearings | Case/booking/indictment/AG numbers, offenses, hearing date/time/type, officer, session, attorney |
 | GS-CriminalCourtDispositions | Dispositions | Folder monitored; no files were published at initial verification |
 
-New or changed files are downloaded, up to eight per pass within 60 seconds.
-The newest report from each family is considered before older backfill. All
+By default, new or changed files are downloaded, up to eight per pass within
+60 seconds. The newest report from each family is considered before older backfill. All
 currently listed reports are eligible; the initial backlog is drained over
 subsequent cycles. Files with unchanged size and modification time are fetched
 again after 24 hours to detect silent replacements. A failed download waits an
@@ -122,8 +124,9 @@ Latest downloaded pending-hearing report:
 
 Without `--family`, exports use the latest downloaded report per family.
 `--all-versions` includes every archived report version, including files no
-longer listed by the county. `--slot` instead selects the catalog as of a
-successful collection. These two options are mutually exclusive. Rows include
+longer listed by the county. `--slot` instead selects the latest downloaded
+report per family from the catalog as of a successful collection, rather than
+every file in that catalog. These two options are mutually exclusive. Rows include
 the source filename, modification time, first capture time, content hash, and
 revision key. An unsupported report produces an explicit inventory row with a
 raw-file reference rather than disappearing silently.
@@ -144,11 +147,19 @@ public dashboard; `/api/coverage` exposes only aggregate collection status.
 | SCJ_COURT_BUDGET | 60 seconds |
 | SCJ_COURT_VERIFY_HOURS | 24 hours |
 
+Batch sizes must be integers from 0 through 2,000. Budgets and refresh intervals
+must be finite positive numbers. A zero detail batch skips page downloads but can
+still publish cached coverage; a zero court batch defers the court pass. Neither
+setting disables its freshness alert.
+
 The overall collection execution budget takes precedence over these settings.
 Population observations commit first; supplementary failures preserve those
 results and the last successful case records. Coverage status records partial
-failures and overdue passes. Local scheduling and the existing Cloud Run
-collector both use this same path. Increasing batch sizes may increase traffic,
+failures and overdue passes. `/api/coverage` reports those details; product-specific
+freshness endpoints return HTTP 503 when unhealthy. Supplemental errors or
+incomplete coverage do not alone change a successful population request into a
+failed collector request. Local scheduling and the Cloud Run collector both use
+this same path. Increasing batch sizes may increase traffic,
 compute use, and storage; the dashboard reports actual progress rather than
 assuming the configured daily target was met.
 

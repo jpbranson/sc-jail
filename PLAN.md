@@ -2,11 +2,12 @@
 
 Written before implementation: 2026-09-19.
 
-**Current status (2026-09-22):** Google Cloud deployment is complete. The
+**Current status (2026-09-23 UTC):** Release 0.2.0 is deployed to Google Cloud. The
 collector and dashboard run in `sc-jail-research-20260922`; local collection and
 its restart task are stopped. See [current operations](docs/CLOUD.md) and
-[README.md](README.md). The dated results below preserve the original sequence;
-statements about pending cloud setup describe September 19, not current status.
+[release verification](docs/RELEASE_0_2_0.md). The dated results below preserve the
+original sequence; statements about pending cloud setup describe September 19,
+not current status.
 
 ## Outcome
 
@@ -239,3 +240,13 @@ Stopped the local collector, dashboard, tunnel, and Windows restart task. Kept
 the local archive as a cutover backup. A $15 monthly budget alert is configured;
 it does not cap spending. See [CLOUD.md](docs/CLOUD.md) for the live URLs,
 permissions, migration procedure, and commands for the active archive.
+
+## Reliability release result - 2026-09-23 UTC
+
+Deployed 0.2.0 with recovery from committed observations, resumable repeat
+analytics, narrower collector permissions, daily versioned backups, product
+freshness alerts, and dashboard caching during storage outages. Cloud Build ran
+132 tests and lint before publishing the image. A paused release backup matched
+6,444 objects by name, size, and CRC32C, and live collection resumed successfully.
+See the [audit](docs/AUDIT.md) and [release record](docs/RELEASE_0_2_0.md) for the
+scope, immutable image digest, verification evidence, and remaining limits.

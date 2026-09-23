@@ -16,7 +16,9 @@ total number of observed bookings are also shown.
 Time between visits is the number of calendar days from the earlier booking's
 IML release date to the next booking's IML commitment date. Commitment dates come
 from archived individual detail pages. They are dates, not precise admission or
-release times. A same-day interval is zero calendar days.
+release times. A same-day interval is zero calendar days. Malformed dates and
+commitment dates after the detail observation's Memphis date are treated as
+missing, not as measured intervals.
 
 Bookings are ordered by commitment date. If any commitment date for a person's
 observed bookings is missing, that person's intervals remain unmeasured rather
@@ -41,12 +43,18 @@ for the calculation. Person-level data stays private. The public index and
 A failed calculation preserves the last completed public result and displays
 a delayed-refresh notice.
 
-Long calculations save a private staging registry every 20 observations and
+Long calculations save a private staging registry at
+`private/analytics/repeat-visits-progress.json.gz` every 20 observations and
 before their time budget expires. Each calculation captures fixed source targets;
 later arrivals wait for the next calculation. Subsequent runs resume that work,
 while the published registry and public summary remain at their last complete
 watermark. A calculation-version change requires `--rebuild`. Administrative rebuilds
 renew their storage lease while progressing; a lost lease prevents publication.
+
+`/api/freshness/repeat_visits` returns HTTP 503 when the public result has no
+`through` watermark, is more than one hour behind, has a refresh error, or the
+dashboard cannot refresh its storage cache. The collector's population result
+can still be successful while this calculation is delayed.
 
 Commands below use `SCJ_BUCKET` when set, otherwise the local `SCJ_DATA_DIR`
 (default `data/`). The local archive stopped updating at cloud cutover; use the

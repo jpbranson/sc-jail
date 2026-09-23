@@ -2,14 +2,20 @@
 
 ## Current deployment
 
-Deployed September 22, 2026:
+Initially deployed September 22, 2026; updated to 0.2.0 on September 23 UTC.
+The live service configuration, Scheduler, backup settings, and public endpoints
+were rechecked on September 23. See the [0.2.0 release record](RELEASE_0_2_0.md)
+for the deployed image digest and release validation.
 
 - Project: `sc-jail-research-20260922` (number `564083380783`).
 - Region: `us-central1`.
 - Dashboard: https://sc-jail-dashboard-xcucxqzc2q-uc.a.run.app
 - Private collector: https://sc-jail-collector-xcucxqzc2q-uc.a.run.app
 - Archive: `gs://sc-jail-research-20260922-sc-jail-data`.
+- Daily backup: `gs://sc-jail-research-20260922-sc-jail-backup`, at 05:10 UTC.
 - Scheduler: `sc-jail-quarter-hour`, `*/15 * * * *` in UTC.
+- Monitoring: four freshness uptime checks and a backup-error alert, with an
+  enabled email notification channel.
 - Monthly budget: $15, with actual-spend alerts at 50%, 90%, and 100%, and a
   forecast alert at 100%. The budget does not cap spending.
 
@@ -25,15 +31,18 @@ enforces public-access prevention, and unauthenticated collector calls return
 
 The regular 14:00 UTC (9:00 a.m. Central) execution on September 22 completed
 with HTTP 200 at 14:02:08 UTC. Both population sources recorded successful
-observations for that interval. All 111 regression tests and lint checks passed.
-The local dashboard port was confirmed closed after cutover.
+observations for that interval. All 111 regression tests and lint checks passed
+at the initial cutover; the 0.2.0 suite has 132 passing tests. The local dashboard
+port was confirmed closed after cutover.
 
 ## Chosen architecture
 
 One private Cloud Run collector, one public read-only Cloud Run dashboard,
-one Cloud Scheduler job, and a private regional Cloud Storage archive, all in
-`us-central1`. Both services have zero minimum instances, a configured maximum
-of one instance per revision, 0.25 vCPU, 512 MiB RAM, request-based billing, and
+one Cloud Scheduler job, a private regional Cloud Storage archive, and a separate
+daily Storage Transfer Service backup to another private bucket in `us-central1`.
+Cloud Monitoring checks freshness and backup failures. Both Cloud Run services
+have zero minimum instances, a configured maximum of one instance per revision,
+0.25 vCPU, 512 MiB RAM, request-based billing, and
 first-generation execution. The collector lease also prevents overlapping
 collection across revisions.
 The collector runs synchronously inside an authenticated request; it does not
@@ -61,12 +70,13 @@ database server, VM, load balancer, NAT gateway, or paid domain.
 
 ## Expected cost
 
-The table records the original population-only estimate using official pricing
-checked September 19, 2026, USD, light dashboard traffic, and otherwise-unused
-account free allowances. Detail pages and court reports add compute, requests,
-and storage; this baseline is not a forecast for the full deployed workload or
-a zero-cost guarantee. The configured $15 alert is a budget threshold, not a
-monthly cost estimate.
+The table records the original population-only workload estimate in USD, with
+light dashboard traffic and otherwise-unused account free allowances. Its pricing
+assumptions were rechecked against the official sources below on September 23,
+2026. Detail pages, court reports, repeat analytics, backups, and monitoring add
+compute, requests, and storage; this baseline is not a forecast for the full
+deployed workload or a zero-cost guarantee. The configured $15 alert is a budget
+threshold, not a monthly cost estimate.
 
 | Component | Workload / allowance | Expected initial cost |
 | --- | --- | --- |
@@ -82,6 +92,19 @@ minutes. One successful run does not establish a monthly average; measure
 subsequent durations, retries, and archive growth. At 0.25 CPU, approximately
 four minutes per collection would consume the request-based monthly CPU free
 allowance before dashboard use or retries.
+
+The 0.2.0 recovery and monitoring features add costs beyond that table:
+
+- Daily backups add another retained copy, noncurrent backup versions, and
+  listing/copy requests. Soft-deleted objects also incur storage charges during
+  their recovery window. See [Storage pricing](https://cloud.google.com/storage/pricing)
+  and [Storage Transfer pricing](https://cloud.google.com/storage-transfer/pricing).
+- Each region's execution of an uptime check counts separately. Four checks at
+  five-minute intervals produce 35,712 executions per region in a 31-day month.
+  Monitoring includes one million executions per billing account per month, then
+  charges $0.30 per 1,000. These requests also use the dashboard's Cloud Run
+  resources, even when nobody opens the page. See
+  [Monitoring pricing](https://cloud.google.com/products/observability/pricing).
 
 The XLS measured 5.33 MB uncompressed / 1.13 MB compressed. If every poll produced
 a different XLS, originals alone would add about 3.36 GB per 31-day month;
@@ -154,11 +177,15 @@ Subsequent deployments reuse enabled channels without requiring the address agai
 For a short maintenance cutover or rollback, `--image` accepts an already tested
 immutable digest from this project's `sc-jail/app` repository and skips rebuilding.
 Build and verify the image before pausing collection; retain its digest with the
-release record. Mutable tags are rejected by this option.
+release record. Mutable tags are rejected by this option. During a paused
+cutover, combine `--image` with `--defer-scheduler` so deployment does not request
+an immediate collection. Resume the existing job explicitly after verification.
 
-`--defer-scheduler` leaves any existing Scheduler job unchanged, so it is intended
-for initial setup. Pause an existing job explicitly before a later migration.
-`--scheduler-only` configures and invokes the job without rebuilding services.
+`--defer-scheduler` leaves any existing Scheduler job unchanged. It supports
+initial setup or a cutover whose existing job has already been paused explicitly.
+`--scheduler-only` configures and requests an immediate run without rebuilding
+services; it does not explicitly resume a paused job. Ordinary deployment also
+configures and requests a run unless `--defer-scheduler` is supplied.
 New service-account propagation failures during bucket permission binding are
 retried with bounded backoff. The builder also gets bucket-metadata read access
 on the dedicated build bucket, which Cloud Build requires for validation.
@@ -286,6 +313,9 @@ archive and recovery copy until validation is complete.
   dashboard storage outage. Product checks are available at
   `/api/freshness/iml_details`, `/api/freshness/xfer_courts`, and
   `/api/freshness/repeat_visits`; incomplete supplemental coverage is unhealthy.
+  Individual population checks are also available at `/api/freshness/iml` and
+  `/api/freshness/xfer`. Repeat analytics is unhealthy if its `through` watermark
+  is missing, more than one hour old, or the last refresh reported an error.
   Four five-minute uptime checks alert after sustained failures for 15 minutes.
   A separate log alert watches backup failures. Deployment attaches enabled
   Monitoring notification channels; without one, incidents are console-only.
@@ -295,8 +325,11 @@ archive and recovery copy until validation is complete.
   source overdue. A scraper exception is displayed immediately.
 - XFER's file timestamp is independent of the polling timestamp. A successful
   poll does not imply that the county regenerated its report.
-- Local mode retries a failed source once within the slot. Cloud Scheduler
-  makes at most two retries; successful sources are not fetched again.
+- Local mode retries population failures once after 60 seconds when the first
+  attempt finishes within the slot's first ten minutes. Cloud Scheduler makes at
+  most two retries; successful sources are not fetched again. Supplemental or
+  repeat-analysis failures alone do not fail the collector request or trigger
+  these retries; their freshness checks expose the problem.
 - The collector has bounded source timeouts, a 540-second population budget,
   a 600-second request limit, and a 660-second lease with a final commit margin.
 - A changing roster can fail completeness validation. That missing interval is
@@ -315,8 +348,11 @@ archive and recovery copy until validation is complete.
 
 ## Case-data expansion
 
-The same collector request now performs bounded court-report and IML-detail work
-after committing both population observations. It uses the existing private
+The same collector request performs bounded court-report and IML-detail work
+after attempting both population sources and committing each successful result.
+A population-source failure does not by itself block supplemental work; IML
+details require a complete roster no more than two hours old, and all work must
+fit the remaining execution budget. Case collection uses the existing private
 bucket, lease, service, and Scheduler job; no database or new always-on resource
 is required. The extra work increases compute, object operations, and storage
 beyond the original population-only estimates above. Monitor actual usage before

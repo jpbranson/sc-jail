@@ -1,5 +1,8 @@
 # Decisions
 
+Entries describe decisions at the date shown. The September 22 cloud cutover and
+September 23 reliability release supersede the initial local-only operating state.
+
 - 2026-09-19: Target Google Cloud Run, Scheduler, and private Cloud Storage.
   Scaling to zero is a better fit for near-zero cost than an always-on server.
 - 2026-09-19: Keep the two sources independent. One source failing must not
@@ -71,7 +74,7 @@ See [cloud operations](docs/CLOUD.md) for the deployed resources and verificatio
 
 - 2026-09-23: Treat immutable observations as the commit journal and mutable
   checkpoints/indexes as repairable projections. Reconcile across slot boundaries,
-  isolate corrupt source caches, and keep maintenance rebuilds resumable.
+  isolate corrupt source caches, and keep repeat-analysis rebuilds resumable.
 - 2026-09-23: Preserve Cloud Run/Storage and the four source adapters. Add no
   database, queue, frontend framework, or generic repository framework for this
   single-writer workload. Extract only shared archive recovery, XLS identifiers,

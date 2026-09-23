@@ -3,23 +3,18 @@ import io
 import os
 import threading
 import time
+from collections import OrderedDict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, jsonify, render_template, request
-from matplotlib import dates as mdates
-from matplotlib import rc_context
-from matplotlib.backends.backend_svg import FigureCanvasSVG
-from matplotlib.figure import Figure
 
 from .pipeline import collect_all, empty_index
 from .storage import Conflict, read_json
 
 CHICAGO = ZoneInfo("America/Chicago")
 LABELS = {"iml": "IML roster: people", "xfer": "In-jail report: bookings"}
-COLORS = {"iml": "#337ab7", "xfer": "#d17a22"}
-_plot_lock = threading.Lock()
 
 
 def local_time(value):
@@ -36,182 +31,22 @@ def source_health(source, now):
         return "Collection failed", "warning"
     if (now - datetime.fromisoformat(last)).total_seconds() > 1800:
         return "Collection overdue", "warning"
+    current = source.get("current", {})
+    if current.get("pending", 0):
+        return "Coverage incomplete", "warning"
     return "Collecting normally", "ok"
 
 
-def make_chart(index, days, width, *, changes=False):
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    width = max(360, min(1800, width))
-    with (
-        _plot_lock,
-        rc_context(
-            {
-                "font.family": "sans-serif",
-                "font.sans-serif": ["DejaVu Sans", "Arial", "Helvetica", "sans-serif"],
-                "font.size": 12,
-                "axes.labelsize": 12,
-                "xtick.labelsize": 12,
-                "ytick.labelsize": 12,
-                "legend.fontsize": 12,
-                "svg.fonttype": "none",
-                "axes.unicode_minus": False,
-            }
-        ),
-    ):
-        # 12 pt remains 16 CSS px by matching the SVG to its displayed width.
-        fig = Figure(figsize=(width / 96, 370 / 96), dpi=96, facecolor="white")
-        ax = fig.subplots()
-        fig.subplots_adjust(
-            left=min(0.22, 72 / width), right=0.97, bottom=0.36 if width < 650 else 0.27, top=0.94
-        )
-        any_data = False
-        for name in ["iml"] if changes else ["iml", "xfer"]:
-            points = [
-                p
-                for p in index["sources"].get(name, {}).get("history", [])
-                if datetime.fromisoformat(p["observed_at"]) >= cutoff
-            ]
-            if changes:
-                points = [p for p in points if p.get("arrivals") is not None]
-                if points:
-                    times = [datetime.fromisoformat(p["observed_at"]) for p in points]
-                    ax.bar(
-                        times,
-                        [p["arrivals"] for p in points],
-                        width=5 / 1440,
-                        color=COLORS["iml"],
-                        label="Appeared",
-                        align="edge",
-                    )
-                    ax.bar(
-                        times,
-                        [-p["departures"] for p in points],
-                        width=-5 / 1440,
-                        color="#737373",
-                        label="Disappeared",
-                        align="edge",
-                    )
-                    any_data = True
-            elif points:
-                xs, ys, previous = [], [], None
-                for p in points:
-                    stamp = datetime.fromisoformat(p["observed_at"])
-                    slot = datetime.fromisoformat(p["slot"])
-                    if previous is not None and (slot - previous).total_seconds() > 900:
-                        xs.append(stamp)
-                        ys.append(float("nan"))
-                    xs.append(stamp)
-                    ys.append(p["population"])
-                    previous = slot
-                ax.plot(
-                    xs,
-                    ys,
-                    color=COLORS[name],
-                    linewidth=1.8,
-                    marker="o",
-                    markersize=5 if len(points) < 40 else 0,
-                    label=LABELS[name],
-                )
-                any_data = True
-        for spine in ax.spines.values():
-            spine.set_visible(False)
-        ax.set_axisbelow(True)
-        ax.grid(axis="both", color="#e8e8e8", linewidth=0.7)
-        ax.tick_params(length=0, pad=8)
-        if any_data:
-            locator = mdates.AutoDateLocator(
-                tz=CHICAGO, minticks=2, maxticks=3 if width < 650 else 6
-            )
-            ax.xaxis.set_major_locator(locator)
-            ax.xaxis.set_major_formatter(
-                mdates.DateFormatter("%b %d\n%I:%M %p" if days <= 7 else "%b %d", tz=CHICAGO)
-            )
-            if not changes:
-                low, high = ax.get_ylim()
-                if high - low < 20:
-                    middle = (high + low) / 2
-                    ax.set_ylim(middle - 10, middle + 10)
-            else:
-                ax.axhline(0, color="#aaaaaa", linewidth=0.8)
-                if ax.get_ylim()[1] - ax.get_ylim()[0] < 2:
-                    ax.set_ylim(-1, 1)
-            ax.yaxis.get_major_locator().set_params(integer=True)
-            ax.legend(
-                loc="upper left",
-                bbox_to_anchor=(0, -0.24),
-                frameon=False,
-                ncol=1 if width < 650 else 2,
-                borderaxespad=0,
-            )
-        else:
-            ax.set_xticks([])
-            ax.set_yticks([])
-            ax.text(
-                0.5,
-                0.5,
-                "Waiting for consecutive\nobservations"
-                if changes
-                else "History will appear after\nthe first collection",
-                ha="center",
-                va="center",
-                transform=ax.transAxes,
-                color="#666666",
-            )
-        out = io.StringIO()
-        FigureCanvasSVG(fig).print_svg(out)
-        return out.getvalue()
+def make_chart(*args, **kwargs):
+    from .charts import make_chart as render
+
+    return render(*args, **kwargs)
 
 
-def make_repeat_chart(summary, width, *, intervals=False):
-    width = max(360, min(1800, width))
-    with (
-        _plot_lock,
-        rc_context({
-            "font.family": "sans-serif",
-            "font.sans-serif": ["DejaVu Sans", "Arial", "Helvetica", "sans-serif"],
-            "font.size": 12,
-            "svg.fonttype": "none",
-            "axes.unicode_minus": False,
-        }),
-    ):
-        fig = Figure(figsize=(width / 96, 370 / 96), dpi=96, facecolor="white")
-        ax = fig.subplots()
-        fig.subplots_adjust(left=125 / width, right=0.94, bottom=0.18, top=0.96)
-        data = summary.get("interval_distribution" if intervals else "visit_distribution", [])
-        if summary.get("available") and any(row["count"] for row in data):
-            values = [row["count"] for row in data]
-            positions = list(range(len(data)))
-            ax.barh(positions, values, height=0.58, color="#d17a22" if intervals else "#337ab7")
-            ax.set_yticks(positions, [row["label"] for row in data])
-            ax.invert_yaxis()
-            limit = max(values)
-            ax.set_xlim(0, max(1.5, limit * 1.25))
-            for position, value in enumerate(values):
-                ax.text(value + limit * 0.025, position, f"{value:,}", va="center")
-            from matplotlib.ticker import MaxNLocator
+def make_repeat_chart(*args, **kwargs):
+    from .charts import make_repeat_chart as render
 
-            ax.xaxis.set_major_locator(MaxNLocator(nbins=3 if width < 500 else 5, integer=True))
-            ax.set_xlabel("Intervals" if intervals else "People", labelpad=10)
-            ax.set_axisbelow(True)
-            ax.grid(axis="x", color="#e8e8e8", linewidth=0.7)
-        else:
-            ax.set_xticks([])
-            ax.set_yticks([])
-            message = (
-                "Repeat-visit history\nis being prepared"
-                if not summary.get("available")
-                else "No complete intervals\nwith usable dates yet"
-                if intervals and summary.get("repeat_people")
-                else "No repeat bookings\nobserved yet"
-            )
-            ax.text(0.5, 0.5, message, ha="center", va="center",
-                    transform=ax.transAxes, color="#666666")
-        for spine in ax.spines.values():
-            spine.set_visible(False)
-        ax.tick_params(length=0, pad=8)
-        out = io.StringIO()
-        FigureCanvasSVG(fig).print_svg(out)
-        return out.getvalue()
+    return render(*args, **kwargs)
 
 
 def create_app(config, store):
@@ -224,14 +59,42 @@ def create_app(config, store):
         for kind in ("css", "js")
     }
     app.jinja_env.filters["localtime"] = local_time
-    app.jinja_env.filters["number"] = lambda v: f"{v:,}" if v is not None else "â€”"
-    cache, cache_lock = {"at": 0, "data": empty_index()}, threading.Lock()
+    app.jinja_env.filters["number"] = lambda v: f"{v:,}" if v is not None else "\u2014"
+    cache = {"next_attempt": 0, "data": None, "version": None, "error": None,
+             "loaded_at": None, "failures": 0}
+    cache_lock = threading.Lock()
+    chart_cache, chart_lock = OrderedDict(), threading.Lock()
 
     def state():
         with cache_lock:
-            if time.monotonic() - cache["at"] > 30:
-                cache["data"], _ = read_json(store, "public/index.json", empty_index())
-                cache["at"] = time.monotonic()
+            if time.monotonic() >= cache["next_attempt"]:
+                try:
+                    data, version = read_json(store, "public/index.json")
+                    if data is None:
+                        if cache["data"] is not None:
+                            raise ValueError("Previously available index is missing")
+                        data = empty_index()
+                    if not isinstance(data, dict) or not isinstance(data.get("sources"), dict):
+                        raise ValueError("Invalid dashboard index")
+                    if cache["data"] is None or version != cache["version"]:
+                        cache["data"] = {**data, "_revision": str(version)}
+                        cache["version"] = version
+                        with chart_lock:
+                            chart_cache.clear()
+                    cache.update(error=None, failures=0,
+                                 loaded_at=datetime.now(timezone.utc).isoformat())
+                    cache["next_attempt"] = time.monotonic() + 30
+                except Exception:
+                    cache["failures"] += 1
+                    cache["error"] = "Storage refresh failed; showing the last saved observations"
+                    cache["next_attempt"] = time.monotonic() + min(
+                        300, 30 * 2 ** min(cache["failures"] - 1, 4)
+                    )
+                    app.logger.exception("Dashboard index refresh failed")
+                    if cache["data"] is None:
+                        raise
+            if cache["data"] is None:
+                raise RuntimeError("No validated dashboard index is available")
             return cache["data"]
 
     def days_arg():
@@ -247,8 +110,10 @@ def create_app(config, store):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Cache-Control"] = (
-            "no-store" if response.status_code >= 400 else "public, max-age=30"
+            "no-store" if response.status_code >= 400 or cache["error"] else "public, max-age=30"
         )
+        if cache["error"]:
+            response.headers["X-Data-Stale"] = "true"
         return response
 
     @app.get("/")
@@ -266,6 +131,8 @@ def create_app(config, store):
             labels=LABELS,
             supplements=data.get("supplements", {}),
             repeats=data.get("repeat_visits", {}),
+            storage_error=cache["error"],
+            storage_loaded_at=cache["loaded_at"],
             supplemental_health={name: source_health(data.get("supplements", {}).get(name, {}), now)
                                  for name in ("iml_details", "xfer_courts")},
         )
@@ -278,14 +145,24 @@ def create_app(config, store):
             width = int(request.args.get("width", "1000"))
         except ValueError:
             width = 1000
+        width = max(360, min(1800, width // 60 * 60))
         data = state()
-        svg = (
-            make_repeat_chart(
-                data.get("repeat_visits", {}), width, intervals=kind == "visit-intervals"
-            )
-            if kind in ("repeat-visits", "visit-intervals")
-            else make_chart(data, days_arg(), width, changes=kind == "changes")
-        )
+        days = days_arg()
+        key = (data["_revision"], kind, days, width, int(time.time()) // 300)
+        with chart_lock:
+            svg = chart_cache.get(key)
+            if svg is None:
+                svg = (
+                    make_repeat_chart(
+                        data.get("repeat_visits", {}), width, intervals=kind == "visit-intervals"
+                    )
+                    if kind in ("repeat-visits", "visit-intervals")
+                    else make_chart(data, days, width, changes=kind == "changes")
+                )
+                chart_cache[key] = svg
+                while len(chart_cache) > 32:
+                    chart_cache.popitem(last=False)
+            chart_cache.move_to_end(key)
         return Response(svg, mimetype="image/svg+xml")
 
     @app.get("/history.csv")
@@ -344,6 +221,36 @@ def create_app(config, store):
     @app.get("/api/coverage")
     def coverage():
         return jsonify(state().get("supplements", {}))
+
+    @app.get("/api/freshness")
+    @app.get("/api/freshness/<product>")
+    def freshness(product=None):
+        data = state()
+        now = datetime.now(timezone.utc)
+        products = {}
+        for name in ("iml", "xfer", "iml_details", "xfer_courts"):
+            source = data.get("sources" if name in LABELS else "supplements", {}).get(name, {})
+            products[name] = {
+                "status": source_health(source, now)[0],
+                "last_success": source.get("last_success"),
+                **{k: source.get("current", {}).get(k) for k in
+                   ("slot", "fresh", "eligible", "pending", "oldest_checked_at")},
+            }
+        repeat = data.get("repeat_visits", {})
+        through = repeat.get("through")
+        repeat_ok = bool(through) and not repeat.get("error") and (
+            now - datetime.fromisoformat(through)
+        ).total_seconds() <= 3600
+        products["repeat_visits"] = {"status": "Current" if repeat_ok else "Delayed",
+                                    "through": through}
+        if product is not None:
+            if product not in products:
+                return jsonify(error="Unknown data product"), 404
+            healthy = products[product]["status"] in ("Current", "Collecting normally")
+            return jsonify(products[product]), 200 if healthy and not cache["error"] else 503
+        population_ok = all(products[n]["status"] == "Collecting normally" for n in LABELS)
+        return jsonify(storage_error=cache["error"], loaded_at=cache["loaded_at"],
+                       products=products), 200 if population_ok and not cache["error"] else 503
 
     @app.get("/health")
     @app.get("/healthz")

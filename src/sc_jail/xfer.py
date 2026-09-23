@@ -5,6 +5,7 @@ from xml.etree import ElementTree as ET
 
 import xlrd
 
+from .excel import identifier
 from .http import SourceError, SourceHTTP
 
 URL = "https://xfer.shelbycountytn.gov/"
@@ -77,7 +78,7 @@ def parse_workbook(content):
     if not content or not content.startswith(bytes.fromhex("d0cf11e0a1b11ae1")):
         raise SourceError("XFER download is not an Excel XLS file")
     try:
-        book = xlrd.open_workbook(file_contents=content, on_demand=True)
+        book = xlrd.open_workbook(file_contents=content, on_demand=True, formatting_info=True)
     except xlrd.XLRDError as exc:
         raise SourceError("XFER download is not a readable Excel workbook") from exc
     try:
@@ -102,7 +103,9 @@ def parse_workbook(content):
                     values.append(cell.value)
             if is_heading_row(values):
                 continue
-            booking = str(values[1]).strip()
+            values[1] = identifier(book, cells[1])
+            values[5] = identifier(book, cells[5])
+            booking = values[1]
             if not booking or not str(values[0]).strip():
                 raise SourceError("XFER contains a row without a name or booking number")
             bookings.add(booking)

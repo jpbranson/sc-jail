@@ -1,17 +1,19 @@
+import json
 import logging
 import time
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 from . import iml, xfer
+from .archive import advance_checkpoint, publish_point, read_projection, reconcile_source
 from .history import (
-    cached_state,
     canonical_state,
     make_history,
     observation_key,
     restore_observation,
 )
 from .http import SourceError
+from .provenance import provenance
 from .storage import archive_blob, read_json, write_json
 
 log = logging.getLogger(__name__)
@@ -57,21 +59,30 @@ def collect_all(config, store, *, scheduled_at=None, adapters=None, now=utc_now)
     results = {}
     started = time.monotonic()
     with store.lease():
-        index, index_version = read_json(store, "public/index.json", empty_index())
+        index, index_version = read_projection(store, "public/index.json", empty_index())
+        if not isinstance(index.get("sources"), dict):
+            index = empty_index()
         for name, adapter in adapters.items():
             state = index["sources"].setdefault(name, {"history": [], "attempts": []})
-            if state.get("last_slot") == slot.isoformat():
-                results[name] = {"status": "already_collected"}
-                continue
             manifest_key = observation_key(name, slot)
             checkpoint_key = f"private/checkpoints/{name}.json.gz"
-            checkpoint, checkpoint_version = read_json(store, checkpoint_key, {})
             attempt_at = now().isoformat()
             try:
                 if name == "xfer":
                     repair, _ = read_json(store, "private/maintenance/xfer-headers.json", {})
                     if repair and repair.get("phase") != "complete":
                         raise SourceError("XFER history repair must finish before collection resumes")
+                checkpoint, checkpoint_version = reconcile_source(
+                    store, name, slot, public=state, deadline=started + 540
+                )
+                if state.get("last_slot") == slot.isoformat():
+                    state["error"] = None
+                    results[name] = {"status": "already_collected"}
+                    index["updated_at"] = now().isoformat()
+                    index_version = write_json(
+                        store, "public/index.json", index, expected=index_version
+                    )
+                    continue
                 manifest, _ = read_json(store, manifest_key)
                 if manifest is None:
                     source_start = now()
@@ -104,6 +115,7 @@ def collect_all(config, store, *, scheduled_at=None, adapters=None, now=utc_now)
                         "schema": 2,
                         "source": name,
                         "source_url": payload["source_url"],
+                        "provenance": provenance(name),
                         "point": point,
                         "artifacts": artifacts,
                         "history": make_history(store, name, slot, normalized, checkpoint),
@@ -116,19 +128,11 @@ def collect_all(config, store, *, scheduled_at=None, adapters=None, now=utc_now)
                     # A retry may find an immutable observation after a failed state write.
                     normalized = restore_observation(store, manifest_key, manifest, checkpoint)
                 point = manifest["point"]
-                checkpoint = cached_state(
-                    manifest_key, manifest, normalized, checkpoint.get("seen_ids", [])
+                checkpoint = advance_checkpoint(
+                    name, manifest_key, manifest, normalized, checkpoint
                 )
                 write_json(store, checkpoint_key, checkpoint, expected=checkpoint_version)
-                state.update(
-                    last_slot=slot.isoformat(),
-                    last_success=point["finished_at"],
-                    current=point,
-                    error=None,
-                )
-                state["history"] = [p for p in state["history"] if p["slot"] != point["slot"]]
-                state["history"].append(point)
-                state["history"].sort(key=lambda p: p["slot"])
+                publish_point(state, point)
                 results[name] = {"status": "success", **point}
                 log.info("%s collected: population=%s", name, point["population"])
             except Exception as exc:
@@ -174,7 +178,7 @@ def collect_all(config, store, *, scheduled_at=None, adapters=None, now=utc_now)
                 )
             index["updated_at"] = now().isoformat()
             write_json(store, "public/index.json", index, expected=index_version)
-        return {
+        result = {
             "supplements": supplementary,
             "status": "failed"
             if any(r["status"] == "failed" for r in results.values())
@@ -182,3 +186,13 @@ def collect_all(config, store, *, scheduled_at=None, adapters=None, now=utc_now)
             "slot": slot.isoformat(),
             "sources": results,
         }
+        log.info("collection_summary %s", json.dumps({
+            "slot": slot.isoformat(), "status": result["status"],
+            "seconds": round(time.monotonic() - started, 2),
+            "sources": {k: v["status"] for k, v in results.items()},
+            "supplements": {k: {p: v.get(p) for p in ("status", "checked", "pending", "failed")}
+                            for k, v in supplementary.items()},
+            "analytics_through": index.get("repeat_visits", {}).get("through"),
+            "analytics_delayed": bool(index.get("repeat_visits", {}).get("error")),
+        }))
+        return result

@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 
 from bs4 import BeautifulSoup
 
+from .archive import advance_checkpoint, reconcile_source
 from .history import (
-    cached_state,
     canonical_state,
     make_history,
     observation_key,
@@ -15,6 +15,7 @@ from .history import (
 )
 from .http import SourceError, SourceHTTP
 from .iml import URL, start_search
+from .provenance import provenance
 from .storage import archive_blob, encode, read_json, write_json
 
 SECTIONS = ("Inmate", "Incarceration", "Alias", "Detainer", "Bond", "Charge", "Hearing")
@@ -214,17 +215,13 @@ def select_due(roster, checks, moment, refresh_hours):
 
 
 def _commit_cache(store, key, manifest, state, previous, version):
-    cache = cached_state(key, manifest, state, previous.get("seen_ids", []))
-    checks = dict(previous.get("checks", {}))
-    checks.update(manifest["checks"])
-    active = set(state["active_ids"])
-    cache["checks"] = {k: v for k, v in checks.items() if k in active}
+    cache = advance_checkpoint("iml_details", key, manifest, state, previous)
     write_json(store, CACHE_KEY, cache, expected=version)
     return manifest["point"]
 
 
 def collect_details(config, store, slot, *, deadline, now):
-    previous, version = read_json(store, CACHE_KEY, {})
+    previous, version = reconcile_source(store, "iml_details", slot, deadline=deadline)
     key = observation_key("iml_details", slot)
     manifest, _ = read_json(store, key)
     if manifest:
@@ -334,6 +331,7 @@ def collect_details(config, store, slot, *, deadline, now):
         "schema": 2,
         "source": "iml_details",
         "source_url": URL,
+        "provenance": provenance("iml_details"),
         "point": point,
         "artifacts": artifacts,
         "checks": checks if history["kind"] == "checkpoint" else updates,

@@ -11,14 +11,16 @@ from urllib.parse import quote, urlencode
 
 import xlrd
 
+from .archive import advance_checkpoint, reconcile_source
+from .excel import identifier
 from .history import (
-    cached_state,
     canonical_state,
     make_history,
     observation_key,
     restore_observation,
 )
 from .http import SourceError, SourceHTTP
+from .provenance import provenance
 from .storage import archive_blob, encode, read_json, write_json
 from .xfer import URL, parse_listing, xml_response
 
@@ -98,10 +100,9 @@ def _excel_values(book, sheet, index):
         elif cell.ctype == xlrd.XL_CELL_ERROR:
             raise SourceError("Court workbook contains an Excel error cell")
         elif cell.ctype == xlrd.XL_CELL_NUMBER:
-            value = str(int(cell.value)) if cell.value == int(cell.value) else str(cell.value)
-            fmt = book.format_map[book.xf_list[cell.xf_index].format_key].format_str
-            if re.fullmatch("0+", fmt) and cell.value == int(cell.value) and cell.value >= 0:
-                value = value.zfill(len(fmt))
+            value = identifier(book, cell) if cell.value >= 0 and cell.value == int(cell.value) else str(
+                cell.value
+            )
         else:
             value = str(cell.value)
         result.append(value.strip())
@@ -236,16 +237,13 @@ def download_queue(files, old, moment, hours):
 
 
 def _commit_cache(store, key, manifest, state, previous, version):
-    cache = cached_state(key, manifest, state, [])
-    # File paths are a current listing, not a cumulative person-ID inventory.
-    cache["seen_ids"] = state["observed_ids"]
-    cache["directories"] = manifest["directories"]
+    cache = advance_checkpoint("xfer_courts", key, manifest, state, previous)
     write_json(store, CACHE_KEY, cache, expected=version)
     return manifest["point"]
 
 
 def collect_courts(config, store, slot, *, deadline, now):
-    previous, version = read_json(store, CACHE_KEY, {})
+    previous, version = reconcile_source(store, "xfer_courts", slot, deadline=deadline)
     key = observation_key("xfer_courts", slot)
     manifest, _ = read_json(store, key)
     if manifest:
@@ -340,6 +338,7 @@ def collect_courts(config, store, slot, *, deadline, now):
                 revision = {
                     "schema": 1,
                     "parser_version": PARSER_VERSION,
+                    "provenance": provenance("xfer_courts"),
                     "source_url": URL,
                     "file": file,
                     "observed_at": stamp,
@@ -404,6 +403,7 @@ def collect_courts(config, store, slot, *, deadline, now):
         "schema": 2,
         "source": "xfer_courts",
         "source_url": URL,
+        "provenance": provenance("xfer_courts"),
         "point": point,
         "artifacts": artifacts,
         "directories": directories,

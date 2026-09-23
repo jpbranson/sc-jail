@@ -176,3 +176,73 @@ def test_coverage_panel_and_api_are_aggregate_only(tmp_path):
     assert client.get("/api/coverage").json["iml_details"]["current"]["available"] == 80
     for route in ("/", "/api/coverage", "/history.csv"):
         assert b"PRIVATE SYNTHETIC NAME" not in client.get(route).data
+
+
+def test_warm_index_survives_storage_outage_with_warning_and_backoff(tmp_path, monkeypatch):
+    from sc_jail.storage import read_json
+
+    store = LocalStore(tmp_path)
+    stamp = datetime.now(timezone.utc).isoformat()
+    write_json(store, "public/index.json", {"sources": {"iml": {
+        "last_success": stamp, "current": {"population": 3210},
+    }}})
+    clock = [100.0]
+    monkeypatch.setattr("sc_jail.web.time.monotonic", lambda: clock[0])
+    client = create_app(Config(), store).test_client()
+    assert b"3,210" in client.get("/").data
+    reads = []
+
+    def unavailable(*_):
+        reads.append(True)
+        raise OSError("synthetic outage")
+
+    with monkeypatch.context() as m:
+        m.setattr(store, "read", unavailable)
+        clock[0] = 131
+        response = client.get("/")
+        assert response.status_code == 200 and b"3,210" in response.data
+        assert b"Storage refresh failed" in response.data
+        assert response.headers["X-Data-Stale"] == "true"
+        assert client.get("/api/freshness").status_code == 503
+        assert len(reads) == 1
+    clock[0] = 162
+    assert "X-Data-Stale" not in client.get("/").headers
+    assert read_json(store, "public/index.json")[0]["sources"]["iml"]["current"]["population"] == 3210
+
+
+def test_chart_cache_uses_version_and_width_buckets(tmp_path, monkeypatch):
+    calls = []
+    clock = [100.0]
+    monkeypatch.setattr("sc_jail.web.time.monotonic", lambda: clock[0])
+    monkeypatch.setattr("sc_jail.web.make_chart", lambda *a, **kw: calls.append(a) or "<svg/>")
+    store = LocalStore(tmp_path)
+    version = write_json(store, "public/index.json", {"sources": {}})
+    client = create_app(Config(), store).test_client()
+    client.get("/chart/population.svg?width=1000")
+    client.get("/chart/population.svg?width=1001&retry=ignored")
+    assert len(calls) == 1
+    write_json(store, "public/index.json", {"sources": {}, "updated_at": "changed"}, expected=version)
+    clock[0] = 131
+    client.get("/chart/population.svg?width=1000")
+    assert len(calls) == 2
+
+
+def test_full_ninety_day_changes_are_bounded_and_preserve_totals():
+    from sc_jail.charts import change_bins, make_chart
+
+    now = datetime.now(timezone.utc)
+    points = [{"observed_at": (now - timedelta(minutes=15*n)).isoformat(),
+               "arrivals": 2, "departures": 1} for n in range(8640)]
+    bins, seconds = change_bins(points, 90)
+    assert seconds == 86400 and len(bins) <= 91
+    assert sum(b["arrivals"] for b in bins) == 17280
+    assert sum(b["departures"] for b in bins) == 8640
+    svg = make_chart({"sources": {"iml": {"history": points}}}, 90, 1000, changes=True)
+    assert svg.count('id="patch_') < 200
+    assert len(svg) < 100_000
+
+
+def test_coverage_backlog_is_not_reported_as_complete():
+    stamp = datetime.now(timezone.utc)
+    source = {"last_success": stamp.isoformat(), "current": {"pending": 300}}
+    assert source_health(source, stamp) == ("Coverage incomplete", "warning")

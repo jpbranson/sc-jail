@@ -246,3 +246,25 @@ def test_xfer_skips_repeated_full_headers_without_deduplicating_real_rows():
     assert len(records) == 3
     assert bookings == ["TEST-BK-1", "TEST-BK-2"]
     assert not any(xfer.is_heading_record(row) for row in records)
+
+
+def test_xfer_numeric_and_text_identifiers_agree_and_preserve_padding(monkeypatch):
+    import xlrd
+
+    def cell(value, ctype=xlrd.XL_CELL_TEXT):
+        return SimpleNamespace(value=value, ctype=ctype, xf_index=0)
+
+    values = ["SYNTHETIC", "00123", "", "", "", "00007", "", "", "", "", "", ""]
+    rows = [[cell(v) for v in values] for _ in range(2)]
+    rows[0][1] = cell(123.0, xlrd.XL_CELL_NUMBER)
+    rows[0][5] = cell(7.0, xlrd.XL_CELL_NUMBER)
+    sheet = SimpleNamespace(nrows=3, ncols=12, row_values=lambda _: xfer.REQUIRED,
+                            row=lambda n: rows[n-1])
+    book = SimpleNamespace(nsheets=1, datemode=0, sheet_by_index=lambda _: sheet,
+                           release_resources=lambda: None,
+                           format_map={0: SimpleNamespace(format_str="00000")},
+                           xf_list=[SimpleNamespace(format_key=0)])
+    monkeypatch.setattr(xfer.xlrd, "open_workbook", lambda **_: book)
+    records, bookings = xfer.parse_workbook(bytes.fromhex("d0cf11e0a1b11ae1"))
+    assert bookings == ["00123"] and len(records) == 2
+    assert records[0]["Case #"] == records[1]["Case #"] == "00007"

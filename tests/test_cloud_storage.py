@@ -95,7 +95,7 @@ def test_checkpoint_history_and_migration_use_cloud_objects():
     from sc_jail.storage import archive_blob, encode
 
     bucket = Bucket()
-    bucket.list_blobs = lambda prefix: (
+    bucket.list_blobs = lambda prefix, **kwargs: (
         SimpleNamespace(name=key) for key in bucket.objects if key.startswith(prefix)
     )
     client = store(bucket)
@@ -126,3 +126,19 @@ def test_checkpoint_history_and_migration_use_cloud_objects():
     for key, normalized in expected.items():
         assert reconstruct_state(client, key) == normalized
     assert migrate_archive(client)["manifests_converted"] == 0
+
+
+def test_maintenance_renews_lease_and_releases_latest_generation(monkeypatch):
+    clock = [1000.0]
+    monkeypatch.setattr("sc_jail.storage.time.time", lambda: clock[0])
+    bucket = Bucket()
+    one, two = store(bucket), store(bucket)
+    with one.lease(renewable=True):
+        clock[0] = 1500.0
+        write_json(one, "public/test.json", {})
+        clock[0] = 1700.0
+        with pytest.raises(Conflict), two.lease():
+            pass
+        assert one._lease_expires == 2160.0
+    with two.lease():
+        assert two._lease_expires > clock[0]

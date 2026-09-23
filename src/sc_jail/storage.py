@@ -8,12 +8,22 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
+from typing import ContextManager, Protocol
 
 from filelock import FileLock, Timeout
 
 
 class Conflict(RuntimeError):
     pass
+
+
+class Store(Protocol):
+    """Object versions are opaque; callers never depend on a backend client."""
+
+    def read(self, key: str) -> tuple[bytes | None, object]: ...
+    def write(self, key: str, content: bytes, expected=None, *, create_only=False): ...
+    def keys(self, prefix: str) -> list[str]: ...
+    def lease(self, *, renewable=False) -> ContextManager: ...
 
 
 def encode(value):
@@ -69,7 +79,7 @@ class LocalStore:
         )
 
     @contextmanager
-    def lease(self):
+    def lease(self, *, renewable=False):
         try:
             with FileLock(str(self.root / ".collector.lock"), timeout=0):
                 yield
@@ -83,6 +93,7 @@ class GCSStore:
 
         self.bucket = storage.Client().bucket(bucket)
         self._lease_expires = None
+        self._renewable = False
         from google.api_core.retry import Retry
 
         self._retry = Retry(initial=1, maximum=3, deadline=20)
@@ -90,6 +101,8 @@ class GCSStore:
     def read(self, key):
         from google.api_core.exceptions import NotFound, PreconditionFailed
 
+        if key != "private/collector-lease.json":
+            self._maintain_lease()
         for _ in range(3):
             blob = self.bucket.blob(key)
             try:
@@ -104,8 +117,10 @@ class GCSStore:
         raise Conflict("Object kept changing during read")
 
     def write(self, key, content, expected=None, *, create_only=False):
-        from google.api_core.exceptions import PreconditionFailed
+        from google.api_core.exceptions import NotFound, PreconditionFailed
 
+        if key != "private/collector-lease.json":
+            self._maintain_lease()
         if (
             key != "private/collector-lease.json"
             and self._lease_expires is not None
@@ -113,6 +128,14 @@ class GCSStore:
         ):
             raise Conflict("Collector lease is too close to expiry to commit safely")
         blob = self.bucket.blob(key)
+        if create_only:
+            # The routine collector cannot overwrite historical objects. Avoid
+            # requesting overwrite permissions merely to deduplicate existing bytes.
+            try:
+                blob.reload(timeout=20, retry=self._retry)
+                return blob.generation
+            except NotFound:
+                pass
         try:
             blob.upload_from_string(
                 content,
@@ -128,25 +151,50 @@ class GCSStore:
             raise Conflict("Object changed concurrently") from exc
 
     def keys(self, prefix):
-        return sorted(blob.name for blob in self.bucket.list_blobs(prefix=prefix))
+        self._maintain_lease()
+        keys = []
+        for blob in self.bucket.list_blobs(prefix=prefix, timeout=20, retry=self._retry):
+            self._maintain_lease()
+            keys.append(blob.name)
+        return sorted(keys)
+
+    def _maintain_lease(self):
+        if not getattr(self, "_renewable", False) or self._lease_expires is None:
+            return
+        moment = time.time()
+        if moment + 60 >= self._lease_expires:
+            raise Conflict("Maintenance lease expired before it could be renewed")
+        if moment + 180 < self._lease_expires:
+            return
+        expires = moment + 660
+        self._lease_generation = self.write(
+            "private/collector-lease.json",
+            encode({"owner": self._lease_owner, "expires": expires}),
+            expected=self._lease_generation,
+        )
+        self._lease_expires = expires
 
     @contextmanager
-    def lease(self):
+    def lease(self, *, renewable=False):
         key = "private/collector-lease.json"
         old, generation = self.read(key)
         if old and json.loads(old)["expires"] > time.time():
             raise Conflict("Another collector is running")
         expires = time.time() + 660
+        self._lease_owner = uuid.uuid4().hex
         generation = self.write(
-            key, encode({"owner": uuid.uuid4().hex, "expires": expires}), expected=generation
+            key, encode({"owner": self._lease_owner, "expires": expires}), expected=generation
         )
         self._lease_expires = expires
+        self._lease_generation = generation
+        self._renewable = renewable
         try:
             yield
         finally:
             self._lease_expires = None
+            self._renewable = False
             try:
-                self.write(key, encode({"expires": 0}), expected=generation)
+                self.write(key, encode({"expires": 0}), expected=self._lease_generation)
             except Conflict:
                 pass  # Never release a newer owner's lease.
 

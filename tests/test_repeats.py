@@ -187,3 +187,39 @@ def test_collector_refreshes_repeats_and_preserves_them_on_failure(tmp_path, mon
     assert index["repeat_visits"]["repeat_people"] == 1
     assert "delayed" in index["repeat_visits"]["error"]
     assert index["sources"]["iml"]["last_success"] == later.isoformat()
+
+
+def test_deadline_saves_progress_without_publishing_partial_analytics(tmp_path, monkeypatch):
+    from sc_jail import repeats
+
+    store = LocalStore(tmp_path)
+    for n in range(3):
+        observe(store, "iml", [roster("A", str(n))], NOW + timedelta(minutes=15*n))
+    clock, seen = [0], []
+    original = repeats.record_roster
+
+    def ingest(registry, rows, stamp):
+        original(registry, rows, stamp)
+        seen.append(stamp)
+        clock[0] = 100
+
+    with monkeypatch.context() as m:
+        m.setattr(repeats, "record_roster", ingest)
+        m.setattr(repeats.time, "monotonic", lambda: clock[0])
+        for _ in range(2):
+            clock[0] = 0
+            with pytest.raises(TimeoutError):
+                refresh_repeat_visits(store, deadline=100)
+            assert store.read(CACHE_KEY)[0] is None
+    assert seen == [NOW.isoformat(), (NOW + timedelta(minutes=15)).isoformat()]
+    assert refresh_repeat_visits(store)["bookings_seen"] == 3
+
+
+def test_completed_rebuild_does_not_resume_its_old_frozen_targets(tmp_path):
+    store = LocalStore(tmp_path)
+    for n in range(21):
+        observe(store, "iml", [roster("A", str(n))], NOW + timedelta(minutes=15*n))
+    assert refresh_repeat_visits(store)["bookings_seen"] == 21
+    assert refresh_repeat_visits(store, rebuild=True)["bookings_seen"] == 21
+    observe(store, "iml", [roster("A", "NEW")], NOW + timedelta(minutes=15*21))
+    assert refresh_repeat_visits(store)["bookings_seen"] == 22

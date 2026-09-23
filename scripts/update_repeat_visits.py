@@ -13,7 +13,7 @@ def main():
     parser.add_argument("--rebuild", action="store_true", help="Rebuild from all archived observations")
     args = parser.parse_args()
     store = make_store(Config.from_env())
-    with store.lease():
+    with store.lease(renewable=True):
         index, version = read_json(store, "public/index.json", {"sources": {}})
         summary = refresh_repeat_visits(store, rebuild=args.rebuild)
         index["repeat_visits"] = summary

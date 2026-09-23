@@ -68,3 +68,21 @@
   Check `/api/status` and actual observation slots to verify collection freshness.
 
 See [cloud operations](docs/CLOUD.md) for the deployed resources and verification.
+
+- 2026-09-23: Treat immutable observations as the commit journal and mutable
+  checkpoints/indexes as repairable projections. Reconcile across slot boundaries,
+  isolate corrupt source caches, and keep maintenance rebuilds resumable.
+- 2026-09-23: Preserve Cloud Run/Storage and the four source adapters. Add no
+  database, queue, frontend framework, or generic repository framework for this
+  single-writer workload. Extract only shared archive recovery, XLS identifiers,
+  and chart rendering where duplication or startup cost justified a boundary.
+- 2026-09-23: Give the collector create/read access to historical objects and
+  overwrite access only to mutable projections. Enable seven-day archive recovery
+  and an independently permissioned, versioned daily backup without source-delete
+  propagation. Monitor freshness, supplemental coverage, and backup errors.
+- 2026-09-23: Stage repeat-analysis progress privately and publish only complete
+  fixed-target results. Keep validated dashboard data through storage outages,
+  aggregate long-range change bars, and cache rendered charts with bounded size.
+- 2026-09-23: Pin build tools/container base, test in Cloud Build before image
+  publication, preserve deployment environment tuning, and record parser/build
+  provenance. See [the audit](docs/AUDIT.md) for costs and remaining tradeoffs.

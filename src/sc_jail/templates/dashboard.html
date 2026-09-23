@@ -33,6 +33,7 @@
     <p>These measures can differ. Source updates may lag actual jail activity.</p>
   </aside>
   <main>
+    {% if storage_error %}<p class="notice" role="status">{{ storage_error }}. Last successful storage refresh: {{ storage_loaded_at | localtime }}.</p>{% endif %}
     <section class="metrics" aria-label="Latest population observations">
       {% for name, title, unit in [('iml','IML roster','people'),('xfer','In-jail report','bookings')] %}
       {% set source = sources.get(name, {}) %}{% set current = source.get('current', {}) %}
@@ -59,6 +60,7 @@
     <section class="panel">
       <h2>Changes in the IML roster</h2>
       <p class="caption">People appearing or disappearing between consecutive observations. These are observed changes, not confirmed admissions or releases.</p>
+      <p class="caption">{% if days >= 30 %}Daily totals in UTC{% elif days >= 7 %}Hourly totals{% else %}Quarter-hour comparisons{% endif %}; only successfully observed changes are included. Missing intervals are not counted as zero.</p>
       <div class="plot-frame"><img class="plot" data-kind="changes" data-days="{{ days }}"
         src="{{ url_for('chart', kind='changes', days=days, width=360) }}" width="360" height="370"
         alt="People appearing above zero and disappearing below zero between consecutive IML collections."></div>

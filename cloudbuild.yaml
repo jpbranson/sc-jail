@@ -1,7 +1,18 @@
 steps:
+  - name: python:3.13-slim@sha256:8d9d0b8bcf6506481eae4907c18f5e3e7902e629f5f6d684f9e7c32e85e3ddf0
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        pip install --no-cache-dir -r requirements.lock -r requirements-dev.lock
+        python -m pytest -q -p no:cacheprovider
+        python -m ruff check --no-cache src tests scripts
   - name: gcr.io/cloud-builders/docker
-    args: ['build', '-t', '${_IMAGE}', '.']
+    args: ['build', '--build-arg', 'BUILD_REVISION=${_REVISION}', '-t', '${_IMAGE}', '.']
 images: ['${_IMAGE}']
 options:
   logging: GCS_ONLY
 timeout: 900s
+substitutions:
+  _REVISION: development

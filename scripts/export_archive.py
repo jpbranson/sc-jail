@@ -16,13 +16,7 @@ def main():
     args = parser.parse_args()
     config = Config.from_env()
     store = make_store(config)
-    if config.bucket:
-        keys = sorted(b.name for b in store.bucket.list_blobs(prefix="private/observations/"))
-    else:
-        keys = sorted(
-            p.relative_to(store.root).as_posix()
-            for p in (store.root / "private/observations").rglob("*.json.gz")
-        )
+    keys = [k for k in store.keys("private/observations/") if k.endswith(".json.gz")]
     fields = [
         "source",
         "slot",

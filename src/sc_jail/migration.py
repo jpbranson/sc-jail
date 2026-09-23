@@ -17,7 +17,7 @@ def migrate_archive(store, *, verify_only=False):
     """Hold the collector lease; validate each replacement before committing it."""
     report = {"observations_verified": 0, "manifests_converted": 0, "kinds": {}}
     previous_by_source = {}
-    with store.lease():
+    with store.lease(renewable=True):
         for key in store.keys("private/observations/"):
             if not key.endswith(".json.gz"):
                 continue

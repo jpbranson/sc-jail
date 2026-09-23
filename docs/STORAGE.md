@@ -36,8 +36,12 @@ for current exports, reconstruction, or maintenance.
 The mutable file at `private/checkpoints/{source}.json.gz` contains the current
 normalized state, active IDs, and cumulative seen IDs. This working cache is
 overwritten, not appended, and lets collection calculate changes with one state
-read instead of replaying cloud history. A retry can reuse a committed manifest
-and finish the cache/index writes without downloading the source again.
+read instead of replaying cloud history. Before collecting, `archive.reconcile_source`
+finds committed manifests after either projection cursor, including previous slots,
+and finishes checkpoint/index writes without downloading those observations again.
+A malformed cache is rebuilt by checksum-verified replay inside that source's
+failure boundary. A storage access failure is reported, not treated as an empty
+archive. Recovery saves its cursor before the collection deadline and resumes.
 
 Full normalized checkpoints use the existing compressed, content-addressed
 `private/blobs/` objects. Change logs live inside their observation manifests;
@@ -79,17 +83,36 @@ pause its scheduler, let any active collection finish, and run:
 These commands use `SCJ_DATA_DIR` or `SCJ_BUCKET` like the collector. Migration
 holds the collector lease, verifies the reconstructed normalized state, and uses
 atomic/generation-checked manifest replacement. It resumes safely if interrupted.
-A cloud lease expiry stops further writes safely; completed conversions remain
-readable. Migration of a large archive requires a planned maintenance window.
+Maintenance leases renew with generation preconditions while work progresses;
+losing the lease stops further writes safely. Completed conversions remain
+readable. Migration of a large archive requires a planned maintenance window and
+an administrative identity; the collector cannot replace historical manifests.
 
 Original manifests are retained under `private/legacy/observations/`, and their
 original normalized blobs remain available. This is a one-time migration backup:
 conversion does not immediately reclaim those bytes. Future observations use
-only the new format. No automatic backup or raw-archive deletion is configured.
+only the new format. Daily cloud backup is configured separately; no live
+raw-archive deletion is configured. See [backup and restoration](CLOUD.md#backup-and-restoration).
 
 Verification replays every observation in chronological order. Missing data or
 checksum failures stop verification rather than silently replacing history.
 After migration, verify a real collection and the public status endpoint.
+
+## Rebuild derived state
+
+If the public index is missing or malformed, normal collection repairs its
+population projections from committed observations. For a complete rebuild of
+all four source checkpoints and the public index during paused maintenance:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\rebuild_index.py
+```
+
+This validates retained normalized history, preserves original manifests/blobs,
+and keeps only the latest 90 days in the public population view. It preserves an
+existing repeat summary; rebuild repeat analytics separately if that projection
+was lost. Missing or corrupt immutable history is an error requiring restoration,
+not a reason to fabricate a collection or silently skip data.
 
 ## Retention and storage growth
 

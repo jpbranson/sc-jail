@@ -39,7 +39,7 @@ class OriginalArchive:
 
 def repair_xfer_headers(store):
     """All backups precede replacements; interrupted repairs replay originals."""
-    with store.lease():
+    with store.lease(renewable=True):
         marker, marker_version = read_json(store, MARKER, {})
         if marker.get("phase") == "complete":
             return {**marker["report"], "already_complete": True}

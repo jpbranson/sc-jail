@@ -149,6 +149,12 @@ For example, preview an update to the deployed project with:
 
 Remove `--dry-run` to build and deploy the update. The script does not create
 billing budgets; configure one separately for any new project.
+Pass `--notification-email ADDRESS` to create an operational email channel.
+Subsequent deployments reuse enabled channels without requiring the address again.
+For a short maintenance cutover or rollback, `--image` accepts an already tested
+immutable digest from this project's `sc-jail/app` repository and skips rebuilding.
+Build and verify the image before pausing collection; retain its digest with the
+release record. Mutable tags are rejected by this option.
 
 `--defer-scheduler` leaves any existing Scheduler job unchanged, so it is intended
 for initial setup. Pause an existing job explicitly before a later migration.
@@ -159,9 +165,12 @@ on the dedicated build bucket, which Cloud Build requires for validation.
 
 The script creates or updates dedicated `sc-jail-*` resources. Run it only in
 the intended project. It builds on Cloud Build, so Docker need not run locally.
-It disables soft-delete version accumulation on the dedicated buckets, applies
-a seven-day lifecycle only to the separate build bucket, and never installs a
-retention/deletion rule on the research archive.
+It enables seven-day soft deletion on the archive, creates a separate daily
+backup with versioning, and limits the collector's overwrite/delete access to
+mutable projections and its lease. Build objects alone have seven-day cleanup.
+No deletion lifecycle is installed on the research archive. Existing collection
+tuning variables are preserved when `SCJ_BUCKET` is updated on Cloud Run.
+Cloud Build runs regression tests and lint before publishing the image.
 
 Cloud Run's generated HTTPS URL is printed at the end. The initial Scheduler
 invocation is asynchronous; verify the first regular quarter-hour execution in
@@ -170,6 +179,10 @@ was skipped or an expired scheduled attempt was ignored. Confirm both sources'
 observation slots and successful retrieval times advance. Verify unauthenticated
 collector calls are rejected and the dashboard identity has no access to
 `private/`. Review Cloud Run/Scheduler logs for failures.
+An immediate manual Scheduler run can replay an expired scheduled timestamp and
+be correctly skipped. Wait for the next regular quarter hour, or use an
+authenticated `POST /collect` without a Scheduler timestamp to verify a current
+collection; do not bypass the collector's stale-replay check.
 
 The Linux container and staged deployment were verified on September 22, 2026.
 The service setup and scheduler activation are separate so archive migration
@@ -235,13 +248,47 @@ For subsequent commands that should use the local archive, clear the selection:
 Remove-Item Env:SCJ_BUCKET -ErrorAction SilentlyContinue
 ```
 
-The local `data/` directory remains the September 22 cutover backup. To back up
-newer cloud observations, copy the cloud archive to a separate private location
-during a maintenance window and verify its object inventory and checksums.
+The local `data/` directory remains the September 22 cutover backup. It must not
+be used to overwrite newer cloud observations.
+
+## Backup and restoration
+
+The deployment configures Storage Transfer Service to copy the archive into
+`gs://YOUR_PROJECT_ID-sc-jail-backup` daily at 05:10 UTC. Changed objects are copied;
+objects missing from the source are retained in the backup. The transient
+collector lease is excluded. The collector and dashboard have no backup access.
+The backup has versioning and seven-day soft deletion. Its lifecycle removes only
+noncurrent versions older than 30 days with at least two newer versions. Live
+backup objects have no deletion lifecycle. This adds storage and request costs;
+it is a same-project recovery copy, not protection from a compromised project owner.
+
+Failed copy/find operations are logged and monitored. Check the transfer job's
+last successful operation as well as the failure alert: a disabled job cannot
+emit copy failures. Scheduled copies can overlap collection and do not form an
+atomic snapshot. Immutable manifests are commit records; rebuild projections
+after a restore. For a release checkpoint or restore drill, pause Scheduler,
+wait for active collection to finish, run the transfer job, and compare both
+inventories by object name, size, and CRC32C (excluding the lease).
+
+After accidental deletion, first inspect the archive's soft-deleted generations
+and the backup's live/noncurrent versions. Restore into a **separate private
+bucket or local directory**, not over the active archive. Never restore the lease.
+Use `scripts/migrate_history.py --verify-only` to check reconstruction, then
+`scripts/rebuild_index.py` and `scripts/update_repeat_visits.py --rebuild` to
+recreate projections. Compare counts and latest slots before switching the
+collector/dashboard `SCJ_BUCKET` and resuming Scheduler. Keep the original
+archive and recovery copy until validation is complete.
 
 ## Monitoring and limits
 
-- `/health` checks the web process. `/api/status` checks source freshness.
+- `/health` checks the web process. `/api/status` reports source freshness.
+  `/api/freshness` returns 503 for failed/overdue population collection or a
+  dashboard storage outage. Product checks are available at
+  `/api/freshness/iml_details`, `/api/freshness/xfer_courts`, and
+  `/api/freshness/repeat_visits`; incomplete supplemental coverage is unhealthy.
+  Four five-minute uptime checks alert after sustained failures for 15 minutes.
+  A separate log alert watches backup failures. Deployment attaches enabled
+  Monitoring notification channels; without one, incidents are console-only.
   The local-compatible `/healthz` alias is retained, but Google's frontend
   returned 404 for that path during deployment; use `/health` for cloud checks.
 - After 30 minutes without a successful observation, the dashboard marks that
@@ -250,14 +297,20 @@ during a maintenance window and verify its object inventory and checksums.
   poll does not imply that the county regenerated its report.
 - Local mode retries a failed source once within the slot. Cloud Scheduler
   makes at most two retries; successful sources are not fetched again.
-- The collector has bounded source timeouts, a 600-second safe execution
-  deadline, and a 660-second lease with a final commit margin.
+- The collector has bounded source timeouts, a 540-second population budget,
+  a 600-second request limit, and a 660-second lease with a final commit margin.
 - A changing roster can fail completeness validation. That missing interval is
   preferable to a false population change; the next attempt starts a fresh session.
 - Cloud outages and source outages cannot be backfilled from a live current
   roster. Original observation times are always preserved.
-- Soft-delete is disabled to avoid charging for repeated overwritten indexes.
-  Keep an independent backup if protection from operator deletion is required.
+- A warm dashboard retains the last validated aggregate index during a storage
+  outage, marks responses stale, and backs off retries. A cold instance without
+  cached data returns 503. Chart output is bounded and cached by index revision,
+  range, width bucket, and time bucket. Long-range change bars aggregate valid
+  observations; gaps are not filled with zeroes.
+- Each collection logs a structured `collection_summary` with source status,
+  elapsed time, supplemental counts, and repeat-analysis watermark. Observations
+  record application/parser versions and a source-content build identifier.
 
 
 ## Case-data expansion

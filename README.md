@@ -25,13 +25,14 @@ storage.
 
 ## Running now
 
-As of September 22, 2026, the collectors and dashboard are deployed to Google
+As of September 23, 2026 UTC, the collectors and dashboard are deployed to Google
 Cloud in `us-central1`.
 
 - Dashboard: https://sc-jail-dashboard-xcucxqzc2q-uc.a.run.app
 - Project: `sc-jail-research-20260922`.
 - Cloud Scheduler invokes the private collector on UTC quarter hours.
-- `/health` checks the dashboard process; `/api/status` reports source freshness.
+- `/health` checks the dashboard process; `/api/freshness` returns HTTP 503 when
+  population collection is unhealthy. `/api/status` retains the detailed status.
 - The private archive is `gs://sc-jail-research-20260922-sc-jail-data`.
 - A $15 monthly budget alert is configured; it is not a spending cap.
 
@@ -42,6 +43,8 @@ backup of the migrated history; it no longer receives new cloud observations.
 
 The first regular 9:00 a.m. Central cloud run completed successfully for both
 population sources. See [cloud deployment and operations](docs/CLOUD.md).
+The 0.2.0 audit improvements and release evidence are recorded in the
+[technical audit](docs/AUDIT.md) and [verification record](docs/RELEASE_0_2_0.md).
 The local setup below remains available for development or fallback. Starting
 it does not pause Cloud Scheduler or synchronize the cloud archive. Before a
 production fallback, pause the cloud job, let any active collection finish, and
@@ -61,7 +64,8 @@ PowerShell:
 ```powershell
 py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.lock
-.\.venv\Scripts\python.exe -m pip install --no-deps -e .
+.\.venv\Scripts\python.exe -m pip install -r requirements-build.lock
+.\.venv\Scripts\python.exe -m pip install --no-build-isolation --no-deps -e .
 .\scripts\start-local.ps1
 .\scripts\install-local-task.ps1
 ```
@@ -147,6 +151,8 @@ avoid storing identical downloads repeatedly; every successful polling interval
 still gets an observation. Manifests contain collection start/end times, source
 file modification time where available, counts, checksums, and blob references.
 Snapshots are collected over a period of time, not at a single instant.
+New observations also record application, parser, and source-build versions;
+older manifests remain readable without those optional fields.
 
 Normalized history now uses a full checkpoint on the first successful collection
 of each UTC day, followed by record and ID changes. Duplicate charge rows are
@@ -188,7 +194,7 @@ automatic deletion of research data is configured.
 ## Verification
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.lock
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m ruff check src tests scripts
 ```
@@ -198,6 +204,13 @@ retry recovery, parsers, synthetic Excel data, pagination and shifted results,
 time zones, duplicates, interrupted writes, failure isolation, cloud generation
 checks/leases, and dashboard empty/stale/error states. The checked-in Excel
 fixtures contain only invented records.
+
+Cloud Build runs the same tests and lint checks before building a deployable
+image. Runtime, development, build-tool, and container-base versions are pinned.
+To deliberately refresh runtime dependencies, run `python scripts/lock_dependencies.py`,
+review `requirements.lock`, and repeat the checks above. See the
+[technical audit and refactoring decisions](docs/AUDIT.md) for the recovery,
+backup, performance, and failure-mode changes.
 
 The repeated-heading correction repaired 39 historical XFER observations,
 removing 20,168 heading rows across those observations. The latest repaired report

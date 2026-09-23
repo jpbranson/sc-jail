@@ -1,6 +1,7 @@
 """Distinct observed IML bookings per permanent ID; only aggregates are public."""
 
 import time
+import uuid
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from statistics import median
@@ -13,9 +14,11 @@ from .history import (
     replay_history,
     restore_observation,
 )
+from .provenance import REPEAT_CALCULATION_VERSION
 from .storage import read_json, write_json
 
 CACHE_KEY = "private/analytics/repeat-visits.json.gz"
+PROGRESS_KEY = "private/analytics/repeat-visits-progress.json.gz"
 CHICAGO = ZoneInfo("America/Chicago")
 GAP_BINS = (
     ("Same day", 0),
@@ -159,21 +162,57 @@ def _new_keys(store, source, cursor, latest):
 
 
 def refresh_repeat_visits(store, *, deadline=None, rebuild=False):
-    """Run under the collector lease. Backfill once, then consume only new observations."""
+    """Checkpoint work separately; only publish a complete, fixed-target calculation."""
     registry, version = read_json(store, CACHE_KEY)
-    if rebuild or registry is None:
-        registry = {"schema": 1, "visits": {}, "cursors": {}, "coverage_start": None, "through": None}
+    progress, progress_version = read_json(store, PROGRESS_KEY, {})
+    resume = (
+        progress.get("base_version") == version
+        and progress.get("calculation_version") == REPEAT_CALCULATION_VERSION
+        and "registry" in progress
+        and (not rebuild or progress.get("rebuild"))
+    )
+    if resume:
+        registry = progress["registry"]
+        targets = progress["targets"]
+    else:
+        targets = {}
+    if not resume and (rebuild or registry is None):
+        registry = {"schema": 1, "visits": {}, "cursors": {}, "coverage_start": None, "through": None,
+                    "calculation_run_id": uuid.uuid4().hex}
     if registry.get("schema") != 1:
         raise HistoryError("Unsupported repeat-visit cache schema")
-    changed = rebuild
-    for source, ingest in (("iml", record_roster), ("iml_details", record_details)):
+    if registry.get("calculation_version", REPEAT_CALCULATION_VERSION) != REPEAT_CALCULATION_VERSION:
+        raise HistoryError("Repeat-visit calculation changed; rebuild the aggregate")
+    registry["calculation_version"] = REPEAT_CALCULATION_VERSION
+    current_by_source = {}
+    for source in ("iml", "iml_details"):
         current, _ = read_json(store, f"private/checkpoints/{source}.json.gz")
-        if not current:
+        current_by_source[source] = current
+        if current and not resume:
+            targets[source] = current["manifest_key"]
+    changed = rebuild or resume
+    is_rebuild = rebuild or (resume and progress.get("rebuild", False))
+    pending = 0
+
+    def save_progress():
+        nonlocal progress_version, pending
+        progress_version = write_json(store, PROGRESS_KEY, {
+            "schema": 1, "calculation_version": REPEAT_CALCULATION_VERSION,
+            "base_version": version, "rebuild": is_rebuild,
+            "targets": targets, "registry": registry,
+        }, expected=progress_version)
+        pending = 0
+
+    for source, ingest in (("iml", record_roster), ("iml_details", record_details)):
+        current = current_by_source[source]
+        if not targets.get(source):
             continue
         cursor = registry["cursors"].get(source)
         state = None
-        for key in _new_keys(store, source, cursor, current["manifest_key"]):
-            if deadline is not None and time.monotonic() >= deadline - 5:
+        for key in _new_keys(store, source, cursor, targets[source]):
+            if deadline is not None and time.monotonic() >= deadline - 30:
+                if pending:
+                    save_progress()
                 raise TimeoutError("Repeat-visit refresh deferred by the execution budget")
             manifest, _ = read_json(store, key)
             if (
@@ -191,7 +230,7 @@ def refresh_repeat_visits(store, *, deadline=None, rebuild=False):
                 ):
                     raise HistoryError("Repeat-visit history checksum does not match")
             else:
-                if key == current["manifest_key"]:
+                if current and key == current["manifest_key"]:
                     # The current cache avoids replaying an entire day's large detail history.
                     state = restore_observation(store, key, manifest, current)
                 elif state is not None and linked:
@@ -206,7 +245,11 @@ def refresh_repeat_visits(store, *, deadline=None, rebuild=False):
                 registry["coverage_start"] = registry["coverage_start"] or stamp
                 registry["through"] = stamp
             changed = True
+            pending += 1
+            if pending >= 20:
+                save_progress()
     summary = summarize_visits(registry)
+    summary["calculation_version"] = REPEAT_CALCULATION_VERSION
     if changed:
         write_json(store, CACHE_KEY, registry, expected=version)
     return summary

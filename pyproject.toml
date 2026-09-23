@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=75"]
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "sc-jail"
-version = "0.1.0"
+version = "0.2.0"
 description = "Shelby County jail observations and aggregate dashboard"
 requires-python = ">=3.12"
 dependencies = [

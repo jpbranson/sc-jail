@@ -41,6 +41,13 @@ for the calculation. Person-level data stays private. The public index and
 A failed calculation preserves the last completed public result and displays
 a delayed-refresh notice.
 
+Long calculations save a private staging registry every 20 observations and
+before their time budget expires. Each calculation captures fixed source targets;
+later arrivals wait for the next calculation. Subsequent runs resume that work,
+while the published registry and public summary remain at their last complete
+watermark. A calculation-version change requires `--rebuild`. Administrative rebuilds
+renew their storage lease while progressing; a lost lease prevents publication.
+
 Commands below use `SCJ_BUCKET` when set, otherwise the local `SCJ_DATA_DIR`
 (default `data/`). The local archive stopped updating at cloud cutover; use the
 [cloud archive setup](CLOUD.md#work-with-the-active-cloud-archive) to update the

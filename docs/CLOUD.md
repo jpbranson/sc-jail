@@ -7,6 +7,26 @@ The live service configuration, Scheduler, backup settings, and public endpoints
 were rechecked on September 23. See the [0.2.0 release record](RELEASE_0_2_0.md)
 for the deployed image digest and release validation.
 
+The collector received an early-detail-refresh fix at 04:55 UTC on September 23.
+It now serves revision `sc-jail-collector-00005-ddm`, built from
+`source-3b79f7a94a05796d4e7f`, with image digest
+`sha256:cab94e326b8ca956088a552e329c20f242f44e96d738f3ca859ce805062edb5b`.
+Cloud Build `b053b757-05fd-4e79-8894-c835ebc66c75` passed all 138 tests and lint
+on Linux/Python 3.13; Windows checks also passed. Only the collector image changed;
+the dashboard still uses the 0.2.0 release image. Details now queue at 20 hours
+with oldest-first rotation, while the freshness limit remains 24 hours. See
+[case-data settings](CASE_DATA.md#configuration) for the configurable lead and
+its request-volume tradeoff. The previous collector image is retained in the
+0.2.0 release record for rollback.
+
+The first scheduled pass on that revision (05:00 UTC) refreshed 80 details with
+zero page failures, finishing the detail stage at 05:03:47 UTC. It retained all
+3,249 available records; 3,169 were fresh and 80 still overdue as the existing
+daily-expiry wave continued. The oldest check advanced from 03:56 to 04:47 UTC
+on September 22. The freshness endpoint correctly remained HTTP 503. This
+verifies the deployed collection path, not full backlog recovery; the new lead
+needs scheduled passes to work through pages collected under the old rotation.
+
 - Project: `sc-jail-research-20260922` (number `564083380783`).
 - Region: `us-central1`.
 - Dashboard: https://sc-jail-dashboard-xcucxqzc2q-uc.a.run.app

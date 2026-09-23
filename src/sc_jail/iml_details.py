@@ -193,23 +193,27 @@ def roster_hash(row):
     return hashlib.sha256(encode({k: v for k, v in row.items() if k != "result_id"})).hexdigest()
 
 
-def select_due(roster, checks, moment, refresh_hours):
+def select_due(roster, checks, moment, refresh_hours, *, refresh_ahead_hours=4):
+    freshness_limit = timedelta(hours=refresh_hours)
+    # Reserve time for bounded batches and retries before pages become stale.
+    # Short custom intervals still keep at least 75% of their refresh window.
+    lead = timedelta(hours=min(refresh_ahead_hours, refresh_hours / 4))
     pending = []
     for row in roster:
         meta = checks.get(row["booking_number"], {})
         checked = meta.get("checked_at")
         changed = meta.get("roster_sha256") != roster_hash(row)
-        old = not checked or moment - datetime.fromisoformat(checked) >= timedelta(
-            hours=refresh_hours
-        )
-        if not changed and not old:
+        age = moment - datetime.fromisoformat(checked) if checked else freshness_limit
+        if not changed and age < freshness_limit - lead:
             continue
         attempted = meta.get("failed_at")
         if attempted and moment - datetime.fromisoformat(attempted) < timedelta(hours=1):
             continue
-        priority = 0 if checked and changed else 1 if not checked else 2
+        priority = (
+            0 if checked and changed else 1 if not checked else 2 if age >= freshness_limit else 3
+        )
         pending.append(
-            (priority, bool(row["release_date"]), checked or "", row["booking_number"], row)
+            (priority, checked or "", bool(row["release_date"]), row["booking_number"], row)
         )
     return [item[-1] for item in sorted(pending, key=lambda item: item[:-1])]
 
@@ -243,7 +247,10 @@ def collect_details(config, store, slot, *, deadline, now):
         for r in previous.get("state", {}).get("records", [])
         if r["booking_number"] in by_id
     }
-    queue = select_due(roster, checks, moment, config.detail_refresh_hours)
+    queue = select_due(
+        roster, checks, moment, config.detail_refresh_hours,
+        refresh_ahead_hours=config.detail_refresh_ahead_hours,
+    )
     updates, artifacts = {}, []
     attempted = succeeded = failures = changed = 0
     budget = min(config.detail_budget, deadline - time.monotonic())

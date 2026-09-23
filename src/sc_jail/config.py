@@ -17,6 +17,7 @@ class Config:
     detail_batch: int = 80
     detail_budget: float = 120
     detail_refresh_hours: float = 24
+    detail_refresh_ahead_hours: float = 4
     court_batch: int = 8
     court_budget: float = 60
     court_verify_hours: float = 24
@@ -39,6 +40,8 @@ class Config:
             value = getattr(self, name)
             if not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{name} must be finite and positive")
+        if not math.isfinite(self.detail_refresh_ahead_hours) or self.detail_refresh_ahead_hours < 0:
+            raise ValueError("detail_refresh_ahead_hours must be finite and nonnegative")
 
     @classmethod
     def from_env(cls):
@@ -51,6 +54,9 @@ class Config:
             detail_budget=float(os.getenv("SCJ_DETAIL_BUDGET", cls.detail_budget)),
             detail_refresh_hours=float(
                 os.getenv("SCJ_DETAIL_REFRESH_HOURS", cls.detail_refresh_hours)
+            ),
+            detail_refresh_ahead_hours=float(
+                os.getenv("SCJ_DETAIL_REFRESH_AHEAD_HOURS", cls.detail_refresh_ahead_hours)
             ),
             court_batch=int(os.getenv("SCJ_COURT_BATCH", cls.court_batch)),
             court_budget=float(os.getenv("SCJ_COURT_BUDGET", cls.court_budget)),

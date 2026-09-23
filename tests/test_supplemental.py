@@ -77,8 +77,18 @@ def test_expansion_settings_reject_unbounded_or_invalid_values():
     for kwargs in (
         {"detail_batch": -1},
         {"detail_refresh_hours": 0},
+        {"detail_refresh_ahead_hours": -1},
+        {"detail_refresh_ahead_hours": float("nan")},
+        {"detail_refresh_ahead_hours": float("inf")},
         {"court_budget": float("nan")},
         {"court_batch": 2001},
     ):
         with pytest.raises(ValueError):
             Config(**kwargs)
+
+
+def test_early_refresh_environment_setting(monkeypatch):
+    monkeypatch.setenv("SCJ_DETAIL_REFRESH_AHEAD_HOURS", "2.5")
+    assert Config.from_env().detail_refresh_ahead_hours == 2.5
+    monkeypatch.setenv("SCJ_DETAIL_REFRESH_AHEAD_HOURS", "0")
+    assert Config.from_env().detail_refresh_ahead_hours == 0

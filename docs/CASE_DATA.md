@@ -24,12 +24,18 @@ Dates, amounts, case numbers, and source labels retain their published meaning.
 Do not sum repeated bond values across charge rows. Repeated charges and aliases
 are preserved. Names are not used to join people or cases.
 
-By default, each pass attempts at most 80 pages within 120 seconds. New/unfetched
-bookings, changed roster entries, and then oldest overdue pages receive priority. A failed
-page waits an hour before another attempt; three consecutive page failures end
-the batch. The target revisit interval is 24 hours, subject to source availability
-and the execution budget. Detail-only changes are found on that rotation, not
-necessarily at the next 15-minute population poll. The initial roster takes
+By default, each pass attempts at most 80 pages within 120 seconds. Changed roster
+entries, new/unfetched bookings, oldest overdue pages, and then early refreshes
+receive priority. Age takes precedence over release status so older pages are not
+continually deferred by newer active bookings. A failed page waits an hour before
+another attempt; three consecutive page failures end
+the batch. Pages enter the refresh queue at 20 hours by default, leaving four
+hours for bounded batches and retries before the strict 24-hour freshness limit.
+Pages awaiting an early refresh remain fresh until that limit; failed requests
+and genuinely overdue pages still make the product check unhealthy. Actual
+revisits depend on source availability and the execution budget. Detail-only
+changes are found on that rotation, not necessarily at the next 15-minute
+population poll. The initial roster takes
 multiple passes to cover. The public dashboard shows actual coverage and backlog.
 
 The current detail cache contains only bookings in the latest roster. When a
@@ -143,6 +149,7 @@ public dashboard; `/api/coverage` exposes only aggregate collection status.
 | SCJ_DETAIL_BATCH | 80 pages |
 | SCJ_DETAIL_BUDGET | 120 seconds |
 | SCJ_DETAIL_REFRESH_HOURS | 24 hours |
+| SCJ_DETAIL_REFRESH_AHEAD_HOURS | 4 hours |
 | SCJ_COURT_BATCH | 8 files |
 | SCJ_COURT_BUDGET | 60 seconds |
 | SCJ_COURT_VERIFY_HOURS | 24 hours |
@@ -151,6 +158,14 @@ Batch sizes must be integers from 0 through 2,000. Budgets and refresh intervals
 must be finite positive numbers. A zero detail batch skips page downloads but can
 still publish cached coverage; a zero court batch defers the court pass. Neither
 setting disables its freshness alert.
+
+The early-refresh lead must be finite and nonnegative; zero disables it. The
+effective lead is capped at one quarter of `SCJ_DETAIL_REFRESH_HOURS`, preserving
+at least 75% of short custom refresh intervals. Early refreshes use the existing
+batch and time limits and can increase successful page requests (a 20-hour cycle
+is about 20% more frequent than a 24-hour cycle). Freshness reporting and alerts
+continue to use the full configured interval. Large backlogs or prolonged source
+failures can still exceed the headroom and will continue to alert.
 
 The overall collection execution budget takes precedence over these settings.
 Population observations commit first; supplementary failures preserve those

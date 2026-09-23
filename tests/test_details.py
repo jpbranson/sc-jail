@@ -180,6 +180,74 @@ def test_select_due_prioritizes_changes_new_and_overdue_and_cools_down_failures(
     ]
 
 
+def test_refresh_queue_uses_headroom_and_oldest_first_without_release_starvation():
+    rows = [roster(f"TEST-{i}") for i in range(7)]
+    rows[1]["release_date"] = "09/18/2026"
+    rows[2]["release_date"] = "09/18/2026"
+    ages = [24, 26, 23, 20, 19.99, 22, 0]
+    checks = {
+        row["booking_number"]: {
+            "checked_at": (NOW - timedelta(hours=age)).isoformat(),
+            "roster_sha256": details.roster_hash(row),
+        }
+        for row, age in zip(rows, ages, strict=True)
+    }
+    checks["TEST-5"]["failed_at"] = (NOW - timedelta(minutes=59)).isoformat()
+    checks["TEST-6"]["roster_sha256"] = "changed"
+    assert [row["booking_number"] for row in details.select_due(rows, checks, NOW, 24)] == [
+        "TEST-6", "TEST-1", "TEST-0", "TEST-2", "TEST-3",
+    ]
+
+
+@pytest.mark.parametrize("lead,expected", [(0, []), (4, ["TEST-BK-1"])])
+def test_early_refresh_can_be_disabled_and_is_capped_for_short_intervals(lead, expected):
+    row = roster()
+    checks = {row["booking_number"]: {
+        "checked_at": (NOW - timedelta(minutes=18)).isoformat(),
+        "roster_sha256": details.roster_hash(row),
+    }}
+    assert [r["booking_number"] for r in details.select_due(
+        [row], checks, NOW, 0.4, refresh_ahead_hours=lead,
+    )] == expected
+    assert details.select_due([row], checks, NOW - timedelta(seconds=1), 0.4,
+                              refresh_ahead_hours=lead) == []
+
+
+def test_daily_expiry_wave_drains_in_bounded_batches_before_freshness_deadline():
+    rows = [roster(f"TEST-{i}") for i in range(161)]
+    checks = {row["booking_number"]: {
+        "checked_at": NOW.isoformat(), "roster_sha256": details.roster_hash(row),
+    } for row in rows}
+    batch_counts = []
+    for minutes in (1200, 1215, 1230):
+        moment = NOW + timedelta(minutes=minutes)
+        batch = details.select_due(rows, checks, moment, 24)[:80]
+        batch_counts.append(len(batch))
+        for row in batch:
+            checks[row["booking_number"]]["checked_at"] = moment.isoformat()
+    assert batch_counts == [80, 80, 1]
+    assert details.select_due(rows, checks, NOW + timedelta(hours=24), 24) == []
+
+
+def test_early_refresh_backlog_stays_fresh_but_unchecked_pages_expire(tmp_path, monkeypatch):
+    store = LocalStore(tmp_path)
+    seed_roster(store, [roster(), roster("TEST-BK-2", "TEST-P2")])
+    install_http(monkeypatch, iter([
+        detail_html(), detail_html("TEST-BK-2", "TEST-P2"), detail_html(),
+    ]))
+    collect(store)
+    for hours, batch, expected_fresh in ((20, 1, 2), (24, 0, 1)):
+        moment = NOW + timedelta(hours=hours)
+        cache, version = read_json(store, "private/checkpoints/iml.json.gz")
+        cache["observed_at"] = cache["slot"] = moment.isoformat()
+        write_json(store, "private/checkpoints/iml.json.gz", cache, expected=version)
+        point = collect(store, moment, detail_batch=batch)
+        assert point["checked"] == batch
+        assert point["fresh"] == expected_fresh
+        assert point["pending"] == 2 - expected_fresh
+        assert point["oldest_checked_at"] == NOW.isoformat()
+
+
 def test_detail_skips_fresh_pages_and_archives_only_semantic_changes(tmp_path, monkeypatch):
     store = LocalStore(tmp_path)
     seed_roster(store)

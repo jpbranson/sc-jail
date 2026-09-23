@@ -354,6 +354,10 @@ archive and recovery copy until validation is complete.
   a 600-second request limit, and a 660-second lease with a final commit margin.
 - A changing roster can fail completeness validation. That missing interval is
   preferable to a false population change; the next attempt starts a fresh session.
+  The 07:00 UTC (2 a.m. Central) IML slot failed this way on September 20, 21,
+  and 23 as the roster total fell during every attempt, apparently while released
+  records were purged; the 07:15 slot succeeded each time. Expect a nightly missed
+  slot and, when all retries fail, a brief IML freshness alert.
 - Cloud outages and source outages cannot be backfilled from a live current
   roster. Original observation times are always preserved.
 - A warm dashboard retains the last validated aggregate index during a storage

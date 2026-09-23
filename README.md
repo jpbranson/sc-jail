@@ -17,8 +17,9 @@ daily. See [case data, private exports, and refresh settings](docs/CASE_DATA.md)
 The dashboard shows actual detail coverage and report backlog. It also charts
 [repeat visits and time between visits](docs/REPEAT_VISITS.md) using distinct
 bookings linked by IML permanent ID across the full archive.
-A private [population profile](docs/ANALYSIS.md) summarizes time held, case status,
-charges, bonds, and court dates from a local archive copy.
+A private [population profile and booking panel](docs/ANALYSIS.md) summarize time held,
+case status, charges, bonds, and court dates, and follow each booking over time, from
+a local archive copy.
 
 The dashboard uses Shiny-like controls, Inter text, and minimal SVG charts.
 All interface and chart text is at least 16 CSS px (12 pt). The public surface

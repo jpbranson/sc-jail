@@ -89,3 +89,11 @@ See [cloud operations](docs/CLOUD.md) for the deployed resources and verificatio
 - 2026-09-23: Pin build tools/container base, test in Cloud Build before image
   publication, preserve deployment environment tuning, and record parser/build
   provenance. See [the audit](docs/AUDIT.md) for costs and remaining tradeoffs.
+
+- 2026-09-23: Run analysis on local archive copies under ignored `data/`, never the
+  live bucket, and publish aggregate results only, with counts below ten suppressed.
+- 2026-09-23: Base time-based analysis on a booking panel that must reproduce every
+  archived IML population. Keep permanent-ID and release-date changes as timed
+  histories rather than final values, and count daily movement from first-seen and
+  listed release dates rather than adjacent-slot changes, which skip collection gaps.
+

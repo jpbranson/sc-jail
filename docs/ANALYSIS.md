@@ -1,11 +1,21 @@
-# Population profile
+# Analysis
+
+Two private analysis products are built from local archive copies:
+
+- A **population profile** of who is held on one day (below).
+- A **booking panel** that follows each booking through time; see
+  [Booking panel](#booking-panel).
+
+The staged analysis plan is recorded in [PLAN.md](../PLAN.md#further-analysis-plan---2026-09-23).
+
+## Population profile
 
 `scripts/profile_population.py` summarizes who is currently listed as held, using
 the IML roster and the latest archived record page for each booking. It writes a
 private `summary.json` and a self-contained `report.html` with aggregate counts only.
 Counts from 1 to 9 appear as "<10" in the HTML report.
 
-## Running it
+### Running it
 
 The script reads a local copy of the archive, never the live bucket, so analysis
 cannot touch collection state or its lease. Copy the cloud archive into the ignored
@@ -21,7 +31,7 @@ gcloud storage rsync -r gs://sc-jail-research-20260922-sc-jail-data data\snapsho
 Re-running `rsync` into the same folder downloads only new objects. The snapshot is
 a point-in-time copy, not a backup; the independent cloud backup remains authoritative.
 
-## Definitions
+### Definitions
 
 - **Held:** a booking in the latest complete roster with no release date. The
   roster also lists recently released bookings, which are excluded.
@@ -48,7 +58,7 @@ Adjacent-slot arrivals and departures on the dashboard are not used for daily to
 before September 22, IML missed roughly one slot in five, and changes across those
 gaps are intentionally left blank.
 
-## First results, September 23, 2026
+### First results, September 23, 2026
 
 From the roster observed at 06:48 UTC (3,057 held; 3,055 with record pages):
 
@@ -67,3 +77,54 @@ From the roster observed at 06:48 UTC (3,057 held; 3,055 with record pages):
 These are descriptive counts from Sheriff-published fields, which can lag court
 records. The archive began on September 19, so trends, seasonality, and repeat
 bookings need more collection time.
+
+## Booking panel
+
+`scripts/build_panel.py` replays every committed IML roster and detail observation
+into `bookings.jsonl`, one private row per booking, plus `summary.json` and
+`missing-slots.json`. It omits names and dates of birth.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_panel.py --data-dir data\snapshots\2026-09-23 --output data\analysis\panel
+```
+
+The build then recomputes every archived IML population from the panel, using
+the collector's rule (distinct permanent IDs with a blank release date or one after
+that moment's Central date). Any mismatch writes the files but exits with an error,
+so later analysis should not use them. A four-day archive takes about three minutes,
+mostly to verify detail history.
+
+Each row contains:
+
+- `first_seen_at`, `last_seen_at`, and `spans`: presence intervals across complete
+  rosters. A missed collection slot does not split a span; absence from a successful
+  roster does. `reappearances` counts extra spans.
+- `release_history` and the final `release_date`/`release_listed_at`. The roster can
+  list, withdraw, and relist a release date, so each change is kept.
+- `permanent_id_history`: IML sometimes reassigns a booking's permanent ID. Counting
+  uses the ID in effect at each moment; counting every ID ever seen inflates the
+  population.
+- `outcome`: `released` (release date listed), `held` (on the latest roster without
+  one), or `disappeared` (left the roster without a listed release date).
+- `left_truncated`: present in the first observation, so the booking began before
+  coverage and its full stay is unknown. Held bookings are right-censored.
+- `details`: one entry per change in commitment date, case status, most serious
+  grade, bond total, money-bond-only status, no-bond-set, detainer count, violation
+  charge, earliest next court date, or case numbers, stamped with the detail
+  collection time. Detail pages are checked about daily, so changes are dated to
+  when they were seen, not when they happened.
+
+### Panel results, September 23, 2026
+
+- 3,584 bookings from 333 roster observations; all 333 populations matched.
+- 3,285 were present at coverage start. By the snapshot, 526 had a listed release,
+  3,057 were held, and 1 left the roster without a release date.
+- 54 bookings changed permanent ID (the same bookings the repeat-visit summary
+  excludes as conflicting). One release date was withdrawn and relisted. No booking
+  left and later reappeared.
+- 45 quarter-hour roster slots were missed, all but one before the September 22
+  cloud cutover. The 07:00 UTC slot also fails most nights; see
+  [cloud monitoring](CLOUD.md#monitoring-and-limits).
+- Detail versions recorded 724 next-court-date changes, 251 bond-total changes,
+  186 case-status changes, and 123 changes in most serious grade.
+

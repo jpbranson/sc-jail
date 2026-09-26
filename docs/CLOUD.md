@@ -2,30 +2,49 @@
 
 ## Current deployment
 
-Initially deployed September 22, 2026; updated to 0.2.0 on September 23 UTC.
-The live service configuration, Scheduler, backup settings, and public endpoints
-were rechecked on September 23. See the [0.2.0 release record](RELEASE_0_2_0.md)
-for the deployed image digest and release validation.
+Initially deployed September 22, 2026; updated to 0.2.0 on September 23 UTC and
+redeployed on September 26. The live service configuration, Scheduler, backup
+settings, and public endpoints were rechecked on September 23. See the
+[0.2.0 release record](RELEASE_0_2_0.md) for that release's validation.
 
-The collector received an early-detail-refresh fix at 04:55 UTC on September 23.
-It now serves revision `sc-jail-collector-00005-ddm`, built from
-`source-3b79f7a94a05796d4e7f`, with image digest
-`sha256:cab94e326b8ca956088a552e329c20f242f44e96d738f3ca859ce805062edb5b`.
-Cloud Build `b053b757-05fd-4e79-8894-c835ebc66c75` passed all 138 tests and lint
-on Linux/Python 3.13; Windows checks also passed. Only the collector image changed;
-the dashboard still uses the 0.2.0 release image. Details now queue at 20 hours
-with oldest-first rotation, while the freshness limit remains 24 hours. See
-[case-data settings](CASE_DATA.md#configuration) for the configurable lead and
-its request-volume tradeoff. The previous collector image is retained in the
-0.2.0 release record for rollback.
+**September 26 (current).** Both services run the image built from `main` at
+`94dd8c1` (source-content revision `source-f72b36f8c3e02e9ad7b7`, image digest
+`sha256:c2d936d6d38dce6867b563e8a9628df1a9043abe8401da634c58a2532ff5ed30`, tag
+`latest`). Cloud Build `9232e9aa-f1cd-421d-b2ce-326a57e1fd68` passed all 199 tests
+and lint on Linux/Python 3.13 before publishing it. The collector serves revision
+`sc-jail-collector-00006-72f` and the dashboard `sc-jail-dashboard-00005-gg8`, each
+with all traffic and the same size as before (0.25 vCPU, 512 MiB, zero to one
+instance). This update loads dashboard charts once at their displayed width and
+refreshes an open page in place instead of reloading it. Collection code is
+unchanged since the September 23 detail-refresh fix; the image also carries the
+local analysis modules, which neither service runs. The first scheduled pass on the
+new collector (02:45 UTC) succeeded in 176 seconds, and every freshness check
+returned HTTP 200.
+
+For rollback, the previous image
+(`sha256:cab94e326b8ca956088a552e329c20f242f44e96d738f3ca859ce805062edb5b`) is
+tagged `detail-refresh-20260923`, so the image cleanup policy keeps it. Untagged
+images other than the two most recent, including the 0.2.0 image, are removed
+seven days after they were built. Deploy a retained digest with `--image` as
+described under owner setup.
+
+**September 23 detail-refresh fix (superseded).** The collector received an
+early-detail-refresh fix at 04:55 UTC on September 23 and served revision
+`sc-jail-collector-00005-ddm`, built from `source-3b79f7a94a05796d4e7f`, with the
+`cab94e…` image above. Cloud Build `b053b757-05fd-4e79-8894-c835ebc66c75` passed all
+138 tests and lint on Linux/Python 3.13; Windows checks also passed. Only the
+collector image changed then; the dashboard kept the 0.2.0 release image until
+September 26. Details queue at 20 hours with oldest-first rotation, while the
+freshness limit remains 24 hours. See [case-data settings](CASE_DATA.md#configuration)
+for the configurable lead and its request-volume tradeoff.
 
 The first scheduled pass on that revision (05:00 UTC) refreshed 80 details with
 zero page failures, finishing the detail stage at 05:03:47 UTC. It retained all
 3,249 available records; 3,169 were fresh and 80 still overdue as the existing
 daily-expiry wave continued. The oldest check advanced from 03:56 to 04:47 UTC
 on September 22. The freshness endpoint correctly remained HTTP 503. This
-verifies the deployed collection path, not full backlog recovery; the new lead
-needs scheduled passes to work through pages collected under the old rotation.
+verified the deployed collection path, not full backlog recovery. The backlog had
+cleared by September 26: all 3,308 eligible pages were fresh at 00:05 UTC.
 
 - Project: `sc-jail-research-20260922` (number `564083380783`).
 - Region: `us-central1`.

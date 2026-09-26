@@ -123,6 +123,7 @@ def test_detail_versions_record_only_changed_facts(tmp_path):
         (at(30).isoformat(), 2500.0, "2026-10-15"),
     ]
     assert versions[0]["money_bond_only"] and versions[0]["status"] == "No case marked sentenced"
+    assert versions[0]["bond_types"] == ["Bond Assessed - Courts"]
     assert "UNLISTED" not in bookings
 
 

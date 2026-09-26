@@ -1,12 +1,17 @@
 # Analysis
 
-Two private analysis products are built from local archive copies:
+Private analysis products are built from local archive copies:
 
 - A **population profile** of who is held on one day (below).
 - A **booking panel** that follows each booking through time; see
   [Booking panel](#booking-panel).
+- Weekly **trends**, an **IML/XFER reconciliation**, **length of stay**, **money bond**,
+  **court linkage**, and **re-booking** analyses, all rebuilt by the
+  [weekly run](#weekly-analysis-run).
 
 The staged analysis plan is recorded in [PLAN.md](../PLAN.md#further-analysis-plan---2026-09-23).
+Source behaviors that affect these measures are kept in the
+[source-quality log](SOURCE_QUALITY.md).
 
 ## Population profile
 
@@ -109,9 +114,10 @@ Each row contains:
 - `left_truncated`: present in the first observation, so the booking began before
   coverage and its full stay is unknown. Held bookings are right-censored.
 - `details`: one entry per change in commitment date, case status, most serious
-  grade, bond total, money-bond-only status, no-bond-set, detainer count, violation
-  charge, earliest next court date, or case numbers, stamped with the detail
-  collection time. Detail pages are checked about daily, so changes are dated to
+  grade, bond total, money-bond-only status, no-bond-set, bond types, detainer count,
+  violation charge, earliest next court date, or case numbers, stamped with the detail
+  collection time. Bond types were added on September 26 to tell a bond not yet
+  assessed from other situations; panels built earlier lack the field. Detail pages are checked about daily, so changes are dated to
   when they were seen, not when they happened.
 
 ### Panel results, September 23, 2026
@@ -128,3 +134,116 @@ Each row contains:
 - Detail versions recorded 724 next-court-date changes, 251 bond-total changes,
   186 case-status changes, and 123 changes in most serious grade.
 
+
+## Weekly analysis run
+
+`scripts/weekly_analysis.py` refreshes a local mirror of the cloud archive and rebuilds
+every product into `data/analysis/weekly/<Central date>/`, with `index.html` (status and
+links), `run.json` (per-step status, timing, and readout readiness), and `logs/`.
+
+```powershell
+$env:PATH = "$PWD\.runtime\google-cloud-sdk\bin;$env:PATH"
+.\.venv\Scripts\python.exe scripts\weekly_analysis.py
+```
+
+- The mirror is `data/snapshots/current`. `gcloud storage rsync` downloads only new or
+  changed objects (seconds after the first copy), using the normal `gcloud auth login`
+  sign-in. The run fails if the newest roster slot is more than three hours old.
+- Steps run in separate processes: mirror, booking panel, profile, trends,
+  reconciliation, length of stay, money bond, court linkage, and re-booking. If the panel
+  fails its population check, the steps that use it are skipped and the run is marked
+  incomplete; the others still run.
+- Work goes to a `.partial-*` folder and is renamed at the end. A second run on the same
+  date keeps the earlier folder as `<date>.previous-<time>`; nothing is deleted.
+  A file lock prevents overlapping runs.
+- `--skip-sync` rebuilds from the mirror as it is, and `--output-root` writes elsewhere.
+
+The `SC-Jail-Weekly-Analysis` Windows task runs this on Wednesdays at 09:00 through
+`scripts/run-weekly-analysis.ps1`, which adds the bundled gcloud CLI to `PATH` and
+appends one line per run to `.runtime/weekly-analysis.log` (full output in
+`weekly-analysis.out.log` and `.err.log`). The task runs only while the owner is signed
+in, stores no password, and starts at the next opportunity if a run was missed. Install
+or update it with `scripts\install-weekly-task.ps1`; remove it with
+`Unregister-ScheduledTask SC-Jail-Weekly-Analysis`. If a run fails with an rsync error,
+run `gcloud auth login` again.
+
+Readouts: each analysis records whether it has enough collection time for its first
+readout (`readout_ready` in its `summary.json`). Before then its report is marked
+preliminary. Collection began on September 19, 2026, so readouts become available on or
+after October 17 (bond, court timing), October 19 (length of stay), and December 18
+(re-booking). Reconciliation and court match rates are usable now.
+
+## Trends
+
+`scripts/analysis_trends.py` lines up weekly profile summaries (and the September 23
+baseline) by roster date and shows 23 measures side by side with the change since the
+previous run: people held, time held, case status, charge grades, money bonds,
+detainers, violation charges, court dates, and recent daily bookings and releases.
+Rosters from different times of day can differ; each column names its roster time.
+
+## Source reconciliation
+
+`scripts/reconcile_sources.py` compares each XFER jail workbook version (regenerated about
+every two hours) with the IML roster observation nearest the workbook's own timestamp,
+within 20 minutes, by exact booking number. IML counts a booking as held with a blank or
+future release date. It also compares book date, case numbers, detainer, and earliest
+court date for bookings both list, and describes the bookings only one source lists by
+committing authority, time since booking, and IML location.
+
+September 25 (76 of 80 workbook versions aligned): 3,026 bookings were in both sources.
+XFER listed 136 bookings the IML roster never showed, all booked more than a week earlier
+(92 more than a year); 8 IML-held bookings were missing from XFER. Book dates matched IML
+commitment dates for every shared booking and case-number sets matched for 2,913 of
+3,026. See the [source-quality log](SOURCE_QUALITY.md).
+
+## Length of stay
+
+`scripts/length_of_stay.py` follows bookings first listed after collection began, from the
+IML commitment date to the listed release date in whole days, with Kaplan-Meier estimates
+(`src/sc_jail/survival.py`). Held bookings are censored at the latest roster; bookings that
+leave without a release date are censored when last seen. A commitment date more than a
+week before a booking was first listed marks an older stay, which is excluded.
+
+Groups come from the record page after it fills in, not the first page fetched: charges
+and bond entries appear a median of 6.5 hours after first listing, and a bond decision
+(any bond type other than "Not Assessed") a median of 20.5 hours after. Charge grade and
+detainer use the first page with case entries; bond situation and amount use the first
+page with a bond decision. Record pages keep being fetched while released bookings stay
+listed (a median of 64 hours), so this does not require someone to remain held.
+
+Preliminary (6 days, September 25): 526 new bookings, 256 released; median stay 3 days;
+71% still held after 1 day and 40% after 3 days. The first readout needs 30 days.
+
+## Money bond
+
+`scripts/bond_analysis.py` compares consecutive record-page versions with case entries to
+find each booking's first new court-assessed bond, reduction, increase, recognizance entry,
+or cleared total, and follows each to release. It also describes people held now on money
+bond alone at or below $1,000, $5,000, and $10,000, and new bookings whose first bond
+decision was that low. Changes are dated when seen (record pages refresh about daily).
+Bond status is never treated as a court outcome.
+
+Preliminary (September 25): 53 reductions (median cut 66%), followed by release a median
+of 1 day later; 79 people held on money bond alone of $5,000 or less, a median of 19 days
+so far, 36 of them more than 30 days. The first readout needs about four weeks.
+
+## Court linkage
+
+`scripts/court_linkage.py` joins the latest pending-hearings report to bookings by exact
+booking number, and every archived calendar and indictment version by exact case number.
+It classifies changes in each booking's earliest listed court date and measures time from
+commitment to indictment, by the status of the indicted case itself.
+
+Match rates (September 25): 518 of 519 pending-hearing rows matched to a booking list that
+case on the booking's record; the report listed 327 of 3,027 held bookings. 1,223 held
+bookings had a case on a Criminal Court calendar during collection and 586 on a General
+Sessions calendar. Most court-date changes (1,212) are a passed date replaced by a new one,
+a median of 10 days later; the daily record refresh cannot tell a continuance from a
+scheduled next step. Court-date and indictment timing need four to eight weeks.
+
+## Re-booking
+
+`scripts/rebooking.py` follows each release listed during collection until the same IML
+permanent ID is booked again, with Kaplan-Meier estimates. People whose permanent ID was
+ever reassigned are left out (51 of 533 releases on September 25). This covers only this
+jail during collection and is not a recidivism rate. The readout needs about 90 days.

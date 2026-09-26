@@ -180,6 +180,19 @@ button:hover {
   height:370px;
   max-width:none
 }
+/* Live charts fade in once decoded; later versions swap without fading. */
+.plot-live {
+  opacity:0;
+  transition:opacity .2s ease-in
+}
+.plot-live.is-loaded {
+  opacity:1
+}
+@media(prefers-reduced-motion:reduce) {
+.plot-live {
+  transition:none
+}
+}
 .table-frame {
   overflow:auto
 }

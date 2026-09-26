@@ -25,16 +25,47 @@ def test_dashboard_has_working_chart_sources_without_javascript(tmp_path):
 
     client = create_app(Config(), LocalStore(tmp_path)).test_client()
     page = BeautifulSoup(client.get("/?days=30").data, "html.parser")
-    plots = page.select("img.plot")
-    assert len(plots) == 4
-    for plot in plots:
+    fallbacks = page.select("noscript img.plot")
+    assert len(fallbacks) == 4
+    for plot in fallbacks:
         response = client.get(plot["src"])
         assert response.status_code == 200
         assert response.mimetype == "image/svg+xml"
         assert "days=30" in plot["src"]
+    # Script-driven charts carry no src, so the browser never fetches a guessed width
+    # before layout; the script requests each chart once at its measured width.
+    live = page.select("img.plot-live")
+    assert [plot["data-kind"] for plot in live] == [
+        "population", "changes", "repeat-visits", "visit-intervals"]
+    assert all(not plot.has_attr("src") and plot["data-days"] == "30" for plot in live)
+    assert ".plot-live{display:none}" in page.select_one("head noscript").decode()
     # Layout and chart initialization arrive atomically with the document.
     assert page.select_one("style").string
     assert not page.select("script[src], link[rel=stylesheet]")
+
+
+def test_dashboard_marks_refresh_regions_and_chart_versions(tmp_path, monkeypatch):
+    from bs4 import BeautifulSoup
+
+    monkeypatch.setattr("sc_jail.web.time.monotonic", lambda: 100.0)
+    store = LocalStore(tmp_path)
+    version = write_json(store, "public/index.json", {"sources": {}})
+    app = create_app(Config(), store)
+    page = BeautifulSoup(app.test_client().get("/").data, "html.parser")
+    regions = [region["data-refresh"] for region in page.select("[data-refresh]")]
+    assert regions == ["storage", "metrics", "repeat-summary", "repeat-values",
+                       "source-details", "case-detail"]
+    # Refreshable regions never contain a live chart, so refreshing cannot reload one.
+    assert not page.select("[data-refresh] img.plot-live")
+    assert len(page.body["data-assets"]) == 12
+    first = {plot["data-version"] for plot in page.select("img.plot-live")}
+    assert len(first) == 1
+
+    write_json(store, "public/index.json", {"sources": {}, "updated_at": "new"}, expected=version)
+    monkeypatch.setattr("sc_jail.web.time.monotonic", lambda: 200.0)
+    page = BeautifulSoup(app.test_client().get("/").data, "html.parser")
+    second = {plot["data-version"] for plot in page.select("img.plot-live")}
+    assert len(second) == 1 and second != first
 
 
 def test_stale_and_failed_states_are_honest():
@@ -219,7 +250,7 @@ def test_chart_cache_uses_version_and_width_buckets(tmp_path, monkeypatch):
     version = write_json(store, "public/index.json", {"sources": {}})
     client = create_app(Config(), store).test_client()
     client.get("/chart/population.svg?width=1000")
-    client.get("/chart/population.svg?width=1001&retry=ignored")
+    client.get("/chart/population.svg?width=1001&retry=ignored&v=ignored")
     assert len(calls) == 1
     write_json(store, "public/index.json", {"sources": {}, "updated_at": "changed"}, expected=version)
     clock[0] = 131

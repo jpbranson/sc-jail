@@ -296,3 +296,25 @@ timed histories. The 07:00 UTC roster slot failed on September 20, 21, and 23 wh
 roster shrank mid-scan. See [analysis](docs/ANALYSIS.md#booking-panel) for fields and
 results. Next: schedule the weekly profile (step 5), then steps 2-4 as data accumulates.
 
+## Analysis steps result - 2026-09-26 UTC
+
+Built the weekly run (`scripts/weekly_analysis.py`) and scheduled it as the
+`SC-Jail-Weekly-Analysis` Windows task (Wednesdays 09:00, runs late if missed). Each run
+refreshes the `data/snapshots/current` mirror, rebuilds and validates the panel, and writes
+the profile, trends, IML/XFER reconciliation, length of stay, money bond, court linkage,
+and re-booking reports to `data/analysis/weekly/<date>/`. Started the
+[source-quality log](docs/SOURCE_QUALITY.md). See [analysis](docs/ANALYSIS.md) for
+definitions and first results.
+
+Step status: 1 done; 5's weekly run, trends, reconciliation, and quality log done; step 4's
+match rates done. Steps 2, 3, 4 (court-date and indictment timing), and 5's re-booking are
+coded, tested, and run on current data, but their readouts wait for collection time:
+October 17 (bond, court timing), October 19 (length of stay), and December 18
+(re-booking). Each report is marked preliminary until then.
+
+Findings that changed the design: record pages fill in over the first day (charges a
+median of 6.5 hours after a booking appears, the bond decision 20.5 hours), so groups use
+the filled-in page; XFER lists about 137 long-held bookings the IML roster never shows; and
+most General Sessions entries are marked "Sentenced", which may make the profile's
+pretrial count too low. That last point needs checking against court records before any
+definition changes. Progress and open items are in [FLIGHT_LOG.md](FLIGHT_LOG.md).

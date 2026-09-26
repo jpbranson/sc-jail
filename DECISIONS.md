@@ -97,3 +97,19 @@ See [cloud operations](docs/CLOUD.md) for the deployed resources and verificatio
   histories rather than final values, and count daily movement from first-seen and
   listed release dates rather than adjacent-slot changes, which skip collection gaps.
 
+- 2026-09-26: Run the weekly analysis as a local Windows task under the owner's sign-in,
+  reading a local mirror refreshed with `gcloud storage rsync`. This keeps person-level
+  analysis off the cloud services and needs no stored credentials; a missed run starts at
+  the next opportunity. Readouts are marked preliminary until each analysis has enough
+  collection time.
+- 2026-09-26: Group new bookings by the record page after it fills in (case entries for
+  charge and detainer, a bond decision for bond), not the first page fetched, which usually
+  predates charges and bonds.
+- 2026-09-26: Keep the profile's "no case marked sentenced" definition until the meaning of
+  "Sentenced" on General Sessions entries is checked; court linkage uses the status of the
+  indicted case itself.
+- 2026-09-26: Target under $5 a month for this project (owner requirement). Track it with a
+  weekly cost projection that reports both the case where this project receives the billing
+  account's free allowances and the case where other projects have used them.
+- 2026-09-26: Lower the budget alert from $15 to $5 (owner approved), keeping alerts at
+  50%, 90%, and 100% of actual spend and 100% of forecast. It alerts; it does not cap.

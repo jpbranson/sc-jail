@@ -36,8 +36,9 @@ needs scheduled passes to work through pages collected under the old rotation.
 - Scheduler: `sc-jail-quarter-hour`, `*/15 * * * *` in UTC.
 - Monitoring: four freshness uptime checks and a backup-error alert, with an
   enabled email notification channel.
-- Monthly budget: $15, with actual-spend alerts at 50%, 90%, and 100%, and a
-  forecast alert at 100%. The budget does not cap spending.
+- Monthly budget: $5 since September 26, 2026 (was $15), matching the owner's target of
+  under $5 a month, with actual-spend alerts at 50%, 90%, and 100%, and a forecast alert
+  at 100%. The budget does not cap spending.
 
 All 5,858 local archive files (142,835,436 bytes) passed size and CRC32C
 verification before scheduling was enabled. The local processes and restart
@@ -95,8 +96,8 @@ light dashboard traffic and otherwise-unused account free allowances. Its pricin
 assumptions were rechecked against the official sources below on September 23,
 2026. Detail pages, court reports, repeat analytics, backups, and monitoring add
 compute, requests, and storage; this baseline is not a forecast for the full
-deployed workload or a zero-cost guarantee. The configured $15 alert is a budget
-threshold, not a monthly cost estimate.
+deployed workload or a zero-cost guarantee. The configured $5 alert is a budget
+threshold, not a monthly cost estimate; see measured usage below.
 
 | Component | Workload / allowance | Expected initial cost |
 | --- | --- | --- |
@@ -136,7 +137,7 @@ dashboard traffic and requests to the county consume outbound allowance.
 
 Free allowances are shared across the billing account. Retries, dashboard
 traffic, unrelated workloads, long-term retention, and image size can increase
-costs. The deployed project has a $15 monthly budget alert. Check billing after
+costs. The deployed project has a $5 monthly budget alert (September 26, 2026). Check billing after
 the first day/week and review run duration and bucket growth. **Budget alerts do
 not cap spending.** Pause Scheduler to prevent future scheduled collection;
 let any in-flight request finish. Stored data can still incur charges. There
@@ -151,6 +152,47 @@ Pricing and configuration sources:
 - [Free tier allowances](https://docs.cloud.google.com/free/docs/free-cloud-features)
 - [Artifact Registry pricing](https://cloud.google.com/artifact-registry/pricing)
 - [Custom Cloud Build accounts](https://docs.cloud.google.com/build/docs/securing-builds/configure-user-specified-service-accounts)
+
+## Measured usage and cost - 2026-09-26
+
+The owner's target is **under $5 a month** for this project. Measured use since the 0.2.0
+release (median of full days, September 23 to 25, UTC), projected to an average month at
+us-central1 list prices from the Cloud Billing Catalog (checked September 26):
+
+| Item | Measured | Per month | Free allowance | Cost if this project gets the allowance | Cost if it does not |
+| --- | --- | --- | --- | ---: | ---: |
+| Collector | 20,385 billable s/day, 114 requests/day, 0.25 vCPU, 512 MiB | 158,800 vCPU-s; 317,600 GiB-s (both services) | 180,000 vCPU-s; 360,000 GiB-s | $0.00 (88% used) | $4.61 |
+| Dashboard | 483 billable s/day, 3,551 requests/day (almost all uptime checks) | 111,500 requests | 2 million requests | $0.00 | $0.04 |
+| Storage | 1.09 GiB billable: live 535 MB (archive + backup), soft-deleted 628 MB, noncurrent 6 MB | 1.09 GiB, growing 2.55 GiB/month | 5 GiB | $0.00 | $0.02 |
+| Storage operations | 2,400 writes, 615 lists, 2,845 reads, 4,670 metadata reads a day | 94,900 Class A; 235,700 Class B | 5,000 A; 50,000 B | $0.52 | $0.57 |
+| Container images | 0.38 GiB | 0.38 GiB | 0.5 GiB | $0.00 | $0.04 |
+| Scheduler | 1 job | 1 job | 3 jobs | $0.00 | $0.10 |
+| **Total** | | | | **$0.52** | **$5.38** |
+
+Free allowances belong to the billing account, which has five billing-enabled projects.
+If another project uses Cloud Run's allowance, this project's Cloud Run use is billed and
+the total passes the $5 target. Only the billing console (Billing, Reports, grouped by
+project and SKU, showing free-tier credits) can confirm which case applies; no billing
+export is configured.
+
+Other measurements behind the projection:
+
+- Collector runs take a median 182 s (90th percentile 252 s, maximum 405 s). About 18
+  runs a day fail because IML pagination shifts while the roster changes mid-scan (53 of
+  55 IML failures), and Scheduler retries them; failed scans and retries are about 11% of
+  collector time. Busy-minute CPU use (95th percentile) is 49% of the 0.25 vCPU; memory
+  reaches 47% of 512 MiB at the 99th percentile, so memory should not be reduced.
+- Archive growth is about 44 MB a day: IML roster pages 27 MB, XFER workbooks 14 MB,
+  record pages and manifests 3 MB. The backup doubles it. Soft-deleted copies of
+  overwritten projections (7-day recovery) add about 0.6 GB at steady state. Storage
+  passes 5 GiB in about 1.5 months and would cost about $0.53 a month a year from now.
+- The weekly mirror downloads about 1.4 GB a month, within the 100 GiB free monthly
+  Cloud Storage download allowance.
+
+The weekly analysis run now includes `scripts/usage_report.py`, which repeats these
+measurements, projects both cases against the target (`--cost-target`, default $5), and
+shows an alert on the run's index page when either case is at risk. It reads Monitoring
+metrics, service sizes, and bucket totals only; it changes nothing.
 
 ## Owner setup and deployment
 
@@ -326,6 +368,28 @@ recreate projections. Compare counts and latest slots before switching the
 collector/dashboard `SCJ_BUCKET` and resuming Scheduler. Keep the original
 archive and recovery copy until validation is complete.
 
+### Restore drill - 2026-09-26
+
+A rehearsal restored the backup into a separate local folder
+(`data/restore-drill/2026-09-26`) with the live archive and collector untouched:
+
+1. The backup job was enabled and its latest daily copy (September 25, 05:10 UTC)
+   succeeded. Inventories by name, size, and CRC32C showed all 8,839 history objects
+   written before that copy identical in the backup; the only differences were newer
+   objects and six projections updated later. The lease is excluded by design.
+2. `gcloud storage rsync` restored 9,117 objects (265,001,340 bytes), matching the backup
+   inventory exactly (inventory SHA-256 `e27dab979d64b5e1817e48a5e0da0d2d1fc686574f1963e21d7c048ce5e0989f`).
+3. With `SCJ_BUCKET` unset and `SCJ_DATA_DIR` pointing at the restored folder:
+   `migrate_history.py --verify-only` verified 2,066 observations (11 minutes);
+   `rebuild_index.py` rebuilt 515 IML and 543 XFER points, identical to the backed-up
+   public index except the operational `attempts` and `last_attempt` fields (11 minutes);
+   `update_repeat_visits.py --rebuild` reproduced all 18 public repeat-visit fields and all
+   3,760 private visit records (5 minutes). A booking panel built from the restored copy
+   matched all 515 archived IML populations.
+
+A full restore and rebuild took about 35 minutes on a desktop. The drill does not
+exercise restoring soft-deleted archive generations or noncurrent backup versions.
+
 ## Monitoring and limits
 
 - `/health` checks the web process. `/api/status` reports source freshness.
@@ -356,8 +420,14 @@ archive and recovery copy until validation is complete.
   preferable to a false population change; the next attempt starts a fresh session.
   The 07:00 UTC (2 a.m. Central) IML slot failed this way on September 20, 21,
   and 23 as the roster total fell during every attempt, apparently while released
-  records were purged; the 07:15 slot succeeded each time. Expect a nightly missed
-  slot and, when all retries fail, a brief IML freshness alert.
+  records were purged; the 07:15 slot succeeded each time. It is not nightly: after the
+  cutover it failed only on September 23. From the 0.2.0 release through September 26
+  01:15 UTC, five roster slots were missed at scattered times, and the population alert
+  (more than one checker failing for 15 minutes) fired once, for the September 23 07:00
+  slot. About 11 times a day an IML scan fails when pagination shifts and Scheduler
+  retries it, so `/api/freshness` returns 503 for about five minutes until the retry
+  succeeds; these blips are too short to alert. The record-page alert fired twice on
+  September 23 during the refresh backlog. No alert change was needed as of September 26.
 - Cloud outages and source outages cannot be backfilled from a live current
   roster. Original observation times are always preserved.
 - A warm dashboard retains the last validated aggregate index during a storage

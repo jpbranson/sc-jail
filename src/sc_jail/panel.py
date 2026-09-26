@@ -14,7 +14,7 @@ from .profile import parse_date as detail_date
 from .storage import read_json
 
 FACTS = ("commitment_date", "status", "grade", "bond_total", "money_bond_only",
-         "no_bond_set", "detainers", "violation", "next_court", "cases")
+         "no_bond_set", "bond_types", "detainers", "violation", "next_court", "cases")
 
 
 def replay(store, source):
@@ -59,6 +59,8 @@ def detail_facts(record):
         "bond_total": total,
         "money_bond_only": money_bond_only(record) is not None,
         "no_bond_set": any(b["Bond Type"] == "No Bond Set" for b in record["bonds"]),
+        # Distinguishes a bond not yet assessed from other reasons a money bond is absent.
+        "bond_types": sorted({b["Bond Type"] for b in record["bonds"] if b["Bond Type"]}),
         "detainers": len(record["detainers"]),
         "violation": any(c["Grade"] in VIOLATION_GRADES for c in record["charges"]),
         "next_court": hearings[0].isoformat() if hearings else None,

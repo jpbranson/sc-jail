@@ -19,7 +19,10 @@ The dashboard shows actual detail coverage and report backlog. It also charts
 bookings linked by IML permanent ID across the full archive.
 A private [population profile and booking panel](docs/ANALYSIS.md) summarize time held,
 case status, charges, bonds, and court dates, and follow each booking over time, from
-a local archive copy.
+a local archive copy. A [weekly analysis run](docs/ANALYSIS.md#weekly-analysis-run)
+rebuilds them with trends, an IML/XFER reconciliation, and length-of-stay, money-bond,
+court-linkage, and re-booking analyses. Source behaviors that affect these measures are
+kept in the [source-quality log](docs/SOURCE_QUALITY.md).
 
 The dashboard uses Shiny-like controls, Inter text, and minimal SVG charts.
 All interface and chart text is at least 16 CSS px (12 pt). The public surface
@@ -37,7 +40,8 @@ Cloud in `us-central1`.
 - `/health` checks the dashboard process; `/api/freshness` returns HTTP 503 when
   population collection is unhealthy. `/api/status` retains the detailed status.
 - The private archive is `gs://sc-jail-research-20260922-sc-jail-data`.
-- A $15 monthly budget alert is configured; it is not a spending cap.
+- A $5 monthly budget alert is configured (the target is under $5 a month); it is not a
+  spending cap. See [measured usage and cost](docs/CLOUD.md#measured-usage-and-cost---2026-09-26).
 
 The migration verified all 5,858 files (about 136 MiB) by size and CRC32C.
 The local collector, dashboard, temporary tunnel, and `SC-Jail-Local` restart

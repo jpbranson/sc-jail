@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import io
 import os
 import threading
@@ -54,10 +55,11 @@ def create_app(config, store):
     # Ship the small, trusted display assets with the HTML so a missed asset
     # request cannot leave the dashboard unstyled or prevent chart loading.
     asset_root = Path(app.static_folder)
-    app.jinja_env.globals["dashboard_assets"] = {
-        kind: (asset_root / f"dashboard.{kind}").read_text(encoding="utf-8")
-        for kind in ("css", "js")
-    }
+    assets = {kind: (asset_root / f"dashboard.{kind}").read_text(encoding="utf-8")
+              for kind in ("css", "js")}
+    # An open page reloads once when a deployment changes these assets.
+    assets["version"] = hashlib.sha256((assets["css"] + assets["js"]).encode()).hexdigest()[:12]
+    app.jinja_env.globals["dashboard_assets"] = assets
     app.jinja_env.filters["localtime"] = local_time
     app.jinja_env.filters["number"] = lambda v: f"{v:,}" if v is not None else "\u2014"
     cache = {"next_attempt": 0, "data": None, "version": None, "error": None,
@@ -97,6 +99,10 @@ def create_app(config, store):
                 raise RuntimeError("No validated dashboard index is available")
             return cache["data"]
 
+    def chart_version(data):
+        """Changes whenever a chart can: new index data or the next 5-minute render window."""
+        return f"{data['_revision']}.{int(time.time()) // 300}"
+
     def days_arg():
         try:
             days = int(request.args.get("days", "7"))
@@ -131,6 +137,7 @@ def create_app(config, store):
             labels=LABELS,
             supplements=data.get("supplements", {}),
             repeats=data.get("repeat_visits", {}),
+            chart_version=chart_version(data),
             storage_error=cache["error"],
             storage_loaded_at=cache["loaded_at"],
             supplemental_health={name: source_health(data.get("supplements", {}).get(name, {}), now)
@@ -148,7 +155,7 @@ def create_app(config, store):
         width = max(360, min(1800, width // 60 * 60))
         data = state()
         days = days_arg()
-        key = (data["_revision"], kind, days, width, int(time.time()) // 300)
+        key = (chart_version(data), kind, days, width)
         with chart_lock:
             svg = chart_cache.get(key)
             if svg is None:

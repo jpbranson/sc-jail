@@ -5,8 +5,9 @@
   <meta name="description" content="Shelby County jail population observations and source freshness.">
   <title>Shelby County jail</title>
   <style>{{ dashboard_assets.css | safe }}</style>
+  <noscript><style>.plot-live{display:none}</style></noscript>
 </head>
-<body>
+<body data-assets="{{ dashboard_assets.version }}">
 <header><h1>Shelby County jail</h1><p>Population observations</p></header>
 <div class="layout">
   <aside>
@@ -33,8 +34,8 @@
     <p>These measures can differ. Source updates may lag actual jail activity.</p>
   </aside>
   <main>
-    {% if storage_error %}<p class="notice" role="status">{{ storage_error }}. Last successful storage refresh: {{ storage_loaded_at | localtime }}.</p>{% endif %}
-    <section class="metrics" aria-label="Latest population observations">
+    <div data-refresh="storage">{% if storage_error %}<p class="notice" role="status">{{ storage_error }}. Last successful storage refresh: {{ storage_loaded_at | localtime }}.</p>{% endif %}</div>
+    <section class="metrics" aria-label="Latest population observations" data-refresh="metrics">
       {% for name, title, unit in [('iml','IML roster','people'),('xfer','In-jail report','bookings')] %}
       {% set source = sources.get(name, {}) %}{% set current = source.get('current', {}) %}
       <article class="metric">
@@ -52,23 +53,28 @@
     <section class="panel">
       <h2>Population over time</h2>
       <p class="caption">IML counts people; the in-jail report counts bookings. Gaps indicate missed collections.</p>
-      <div class="plot-frame"><img class="plot" data-kind="population" data-days="{{ days }}"
+      <div class="plot-frame"><img class="plot plot-live" data-kind="population" data-days="{{ days }}"
+        data-version="{{ chart_version }}" height="370"
+        alt="Population history comparing people in the IML roster and bookings in the in-jail report. Download the aggregate CSV for the underlying values."><noscript><img class="plot"
         src="{{ url_for('chart', kind='population', days=days, width=360) }}" width="360" height="370"
-        alt="Population history comparing people in the IML roster and bookings in the in-jail report. Download the aggregate CSV for the underlying values."></div>
+        alt="Population history comparing people in the IML roster and bookings in the in-jail report. Download the aggregate CSV for the underlying values."></noscript></div>
       <noscript><p><a href="/chart/population.svg?days={{ days }}&amp;width=1000">Open population chart</a></p></noscript>
     </section>
     <section class="panel">
       <h2>Changes in the IML roster</h2>
       <p class="caption">People appearing or disappearing between consecutive observations. These are observed changes, not confirmed admissions or releases.</p>
       <p class="caption">{% if days >= 30 %}Daily totals in UTC{% elif days >= 7 %}Hourly totals{% else %}Quarter-hour comparisons{% endif %}; only successfully observed changes are included. Missing intervals are not counted as zero.</p>
-      <div class="plot-frame"><img class="plot" data-kind="changes" data-days="{{ days }}"
+      <div class="plot-frame"><img class="plot plot-live" data-kind="changes" data-days="{{ days }}"
+        data-version="{{ chart_version }}" height="370"
+        alt="People appearing above zero and disappearing below zero between consecutive IML collections."><noscript><img class="plot"
         src="{{ url_for('chart', kind='changes', days=days, width=360) }}" width="360" height="370"
-        alt="People appearing above zero and disappearing below zero between consecutive IML collections."></div>
+        alt="People appearing above zero and disappearing below zero between consecutive IML collections."></noscript></div>
       <noscript><p><a href="/chart/changes.svg?days={{ days }}&amp;width=1000">Open roster changes chart</a></p></noscript>
     </section>
     <section class="panel" aria-labelledby="repeat-title">
       <h2 id="repeat-title">Repeat visits</h2>
       <p class="caption">A visit is a distinct booking for the same IML permanent ID. Seeing the same booking at multiple collections counts once. These charts use all archived observations, independent of the population time range.</p>
+      <div data-refresh="repeat-summary">
       {% if repeats.get('error') %}<p class="notice">{{ repeats.error }}.</p>{% endif %}
       {% if repeats.get('available') %}
       <p class="caption">Observed {{ repeats.coverage_start | localtime }} through {{ repeats.through | localtime }}. Earlier visits we never observed are not included.</p>
@@ -93,24 +99,30 @@
       {% else %}
       <p class="notice">Repeat-visit history is being prepared. Counts will appear after the first completed calculation.</p>
       {% endif %}
+      </div>
       <div class="repeat-charts">
         <div>
           <h3>Visits per returning person</h3>
           <p class="caption">Number of distinct bookings for people observed on two or more bookings.</p>
-          <div class="plot-frame"><img class="plot" data-kind="repeat-visits" data-days="{{ days }}"
+          <div class="plot-frame"><img class="plot plot-live" data-kind="repeat-visits" data-days="{{ days }}"
+        data-version="{{ chart_version }}" height="370"
+        alt="Distribution of people with two, three, four, or five or more distinct bookings. Exact counts are in the chart values below."><noscript><img class="plot"
         src="{{ url_for('chart', kind='repeat-visits', days=days, width=360) }}" width="360" height="370"
-            alt="Distribution of people with two, three, four, or five or more distinct bookings. Exact counts are in the chart values below."></div>
+        alt="Distribution of people with two, three, four, or five or more distinct bookings. Exact counts are in the chart values below."></noscript></div>
           <noscript><p><a href="/chart/repeat-visits.svg?width=1000">Open repeat visits chart</a></p></noscript>
         </div>
         <div>
           <h3>Time between visits</h3>
           <p class="caption">Calendar days from the prior release date to the next commitment date, using IML's published dates.</p>
-          <div class="plot-frame"><img class="plot" data-kind="visit-intervals" data-days="{{ days }}"
+          <div class="plot-frame"><img class="plot plot-live" data-kind="visit-intervals" data-days="{{ days }}"
+        data-version="{{ chart_version }}" height="370"
+        alt="Distribution of calendar days between a prior release and the next commitment. Exact interval counts are in the chart values below."><noscript><img class="plot"
         src="{{ url_for('chart', kind='visit-intervals', days=days, width=360) }}" width="360" height="370"
-            alt="Distribution of calendar days between a prior release and the next commitment. Exact interval counts are in the chart values below."></div>
+        alt="Distribution of calendar days between a prior release and the next commitment. Exact interval counts are in the chart values below."></noscript></div>
           <noscript><p><a href="/chart/visit-intervals.svg?width=1000">Open time between visits chart</a></p></noscript>
         </div>
       </div>
+      <div data-refresh="repeat-values">
       {% if repeats.get('available') %}
       <p class="caption">{{ repeats.measured_intervals | number }} of {{ repeats.additional_visits | number }} repeat intervals have usable dates; {{ repeats.missing_date_intervals | number }} lack required dates and {{ repeats.invalid_date_intervals | number }} have overlapping or ambiguous dates. Same-day intervals are zero calendar days, not a measured number of hours.</p>
       {% if repeats.excluded_bookings %}<p class="notice">{{ repeats.excluded_bookings | number }} bookings are excluded because their person identifiers conflict.</p>{% endif %}
@@ -128,9 +140,10 @@
         </div>
       </details>
       {% endif %}
+      </div>
       <p class="caption">People are linked only by IML permanent ID. XFER does not supply that identifier. These are observed booking histories, not a complete lifetime history or a recidivism rate.</p>
     </section>
-    <section class="panel">
+    <section class="panel" data-refresh="source-details">
       <h2>Latest source details</h2>
       <div class="table-frame"><table>
         <thead><tr><th scope="col">Measure</th><th scope="col">IML roster</th><th scope="col">In-jail report</th></tr></thead>
@@ -141,7 +154,7 @@
         </tbody>
       </table></div>
     </section>
-    <section class="panel">
+    <section class="panel" data-refresh="case-detail">
       <h2>Case detail collection</h2>
       {% set detail = supplements.get('iml_details', {}) %}
       {% set court = supplements.get('xfer_courts', {}) %}

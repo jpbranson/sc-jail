@@ -433,8 +433,10 @@ exercise restoring soft-deleted archive generations or noncurrent backup version
 - A warm dashboard retains the last validated aggregate index during a storage
   outage, marks responses stale, and backs off retries. A cold instance without
   cached data returns 503. Chart output is bounded and cached by index revision,
-  range, width bucket, and time bucket. Long-range change bars aggregate valid
-  observations; gaps are not filled with zeroes.
+  range, width bucket, and time bucket. An open page refreshes its text in place every
+  60 seconds; each chart is requested once at its displayed width and replaced, after
+  it has loaded, only when the index or 5-minute render window changes. Long-range
+  change bars aggregate valid observations; gaps are not filled with zeroes.
 - Each collection logs a structured `collection_summary` with source status,
   elapsed time, supplemental counts, and repeat-analysis watermark. Observations
   record application/parser versions and a source-content build identifier.

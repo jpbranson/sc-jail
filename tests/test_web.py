@@ -277,3 +277,45 @@ def test_coverage_backlog_is_not_reported_as_complete():
     stamp = datetime.now(timezone.utc)
     source = {"last_success": stamp.isoformat(), "current": {"pending": 300}}
     assert source_health(source, stamp) == ("Coverage incomplete", "warning")
+
+
+def test_freshness_health_for_the_project_tracker(tmp_path):
+    store = LocalStore(tmp_path)
+    fresh = datetime.now(timezone.utc).isoformat()
+    write_json(store, "public/index.json", {
+        "sources": {name: {"last_success": fresh, "current": {}} for name in ("iml", "xfer")},
+        "supplements": {"iml_details": {"last_success": fresh, "current": {"eligible": 3200, "fresh": 3200}},
+                        "xfer_courts": {"last_success": fresh, "current": {"pending": 0}}},
+        "repeat_visits": {"through": fresh},
+    })
+    response = create_app(Config(), store).test_client().get("/api/freshness")
+    health = response.json["health"]
+    assert response.status_code == 200
+    assert (health["status"], health["last_success_at"], health["expect_every"]) == ("ok", fresh, "15m")
+    assert health["detail"] == "IML and XFER collecting normally"
+    assert {name: part["status"] for name, part in health["checks"].items()} == {
+        "iml": "ok", "xfer": "ok", "iml_details": "ok", "xfer_courts": "ok", "repeat_visits": "ok"}
+    assert health["checks"]["iml_details"]["detail"] == "Collecting normally; 3,200 of 3,200 fresh"
+    assert health["checks"]["repeat_visits"]["expect_every"] == "1h"
+
+
+def test_freshness_health_grades_each_product_without_changing_the_status_code(tmp_path):
+    store = LocalStore(tmp_path)
+    now = datetime.now(timezone.utc)
+    fresh, old = now.isoformat(), (now - timedelta(hours=2)).isoformat()
+    write_json(store, "public/index.json", {
+        "sources": {"iml": {"last_success": fresh, "error": "timeout", "current": {}},
+                    "xfer": {"last_success": old, "current": {}}},
+        "supplements": {"iml_details": {"last_success": fresh,
+                                        "current": {"eligible": 3200, "fresh": 3100, "pending": 100}}},
+        "repeat_visits": {"through": old},
+    })
+    response = create_app(Config(), store).test_client().get("/api/freshness")
+    health = response.json["health"]
+    assert response.status_code == 503  # unchanged: the uptime checks alert on it
+    assert (health["status"], health["last_success_at"]) == ("fail", old)
+    assert health["detail"] == "iml: Collection failed; xfer: Collection overdue"
+    assert {name: part["status"] for name, part in health["checks"].items()} == {
+        "iml": "warn", "xfer": "fail", "iml_details": "warn", "xfer_courts": "fail", "repeat_visits": "warn"}
+    assert health["checks"]["iml_details"]["detail"] == "Coverage incomplete; 3,100 of 3,200 fresh"
+    assert health["checks"]["xfer_courts"]["last_success_at"] is None  # no data yet

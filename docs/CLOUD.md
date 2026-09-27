@@ -424,6 +424,14 @@ exercise restoring soft-deleted archive generations or noncurrent backup version
   Monitoring notification channels; without one, incidents are console-only.
   The local-compatible `/healthz` alias is retained, but Google's frontend
   returned 404 for that path during deployment; use `/health` for cloud checks.
+- `/api/freshness` also carries a `health` object for the project tracker
+  (github-project-tracker, DESIGN.md §2), without changing the 200/503 the
+  uptime checks use. Each product is a part: "Collecting normally" and
+  "Current" read ok; "Coverage incomplete", "Collection failed" and "Delayed"
+  warn; "Collection overdue" and "No data" fail. One failed attempt only warns,
+  because the tracker ages each `last_success_at` itself (15 minutes expected,
+  an hour for repeat visits). The collection is the worse of the two
+  population sources, and a storage failure warns.
 - After 30 minutes without a successful observation, the dashboard marks that
   source overdue. A scraper exception is displayed immediately.
 - XFER's file timestamp is independent of the polling timestamp. A successful

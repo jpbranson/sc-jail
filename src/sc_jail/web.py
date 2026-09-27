@@ -38,6 +38,36 @@ def source_health(source, now):
     return "Collecting normally", "ok"
 
 
+# How the project tracker's status contract reads each product status. One failed attempt only warns:
+# the tracker ages last_success_at itself, and an overdue source already fails.
+CONTRACT = {"Collecting normally": "ok", "Current": "ok", "Coverage incomplete": "warn",
+            "Collection failed": "warn", "Delayed": "warn", "Collection overdue": "fail", "No data": "fail"}
+SEVERITY = {"ok": 0, "warn": 1, "fail": 2}
+
+
+def freshness_health(products, storage_error):
+    """The `health` object of /api/freshness, read by the project tracker (docs/CLOUD.md). Each product
+    is a part; the collection is the worse of the two population sources, and a storage failure warns."""
+    checks = {}
+    for name, product in products.items():
+        detail = product["status"]
+        if product.get("eligible"):
+            detail += f"; {product['fresh']:,} of {product['eligible']:,} fresh"
+        if product.get("through"):
+            detail += f"; through {product['through'][:16].replace('T', ' ')} UTC"
+        checks[name] = {"status": CONTRACT.get(product["status"], "warn"),
+                        "last_success_at": product.get("last_success") or product.get("through"),
+                        "expect_every": "1h" if name == "repeat_visits" else "15m", "detail": detail}
+    status = max((checks[name]["status"] for name in LABELS), key=SEVERITY.get)
+    problems = [f"{name}: {products[name]['status']}" for name in LABELS if checks[name]["status"] != "ok"]
+    if storage_error:
+        status = max(status, "warn", key=SEVERITY.get)
+        problems.append(storage_error)
+    lasts = [products[name]["last_success"] for name in LABELS]
+    return {"status": status, "last_success_at": min(lasts) if all(lasts) else None, "expect_every": "15m",
+            "detail": "; ".join(problems) or "IML and XFER collecting normally", "checks": checks}
+
+
 def make_chart(*args, **kwargs):
     from .charts import make_chart as render
 
@@ -256,8 +286,9 @@ def create_app(config, store):
             healthy = products[product]["status"] in ("Current", "Collecting normally")
             return jsonify(products[product]), 200 if healthy and not cache["error"] else 503
         population_ok = all(products[n]["status"] == "Collecting normally" for n in LABELS)
-        return jsonify(storage_error=cache["error"], loaded_at=cache["loaded_at"],
-                       products=products), 200 if population_ok and not cache["error"] else 503
+        code = 200 if population_ok and not cache["error"] else 503  # the uptime checks alert on 503
+        return jsonify(storage_error=cache["error"], loaded_at=cache["loaded_at"], products=products,
+                       health=freshness_health(products, cache["error"])), code
 
     @app.get("/health")
     @app.get("/healthz")

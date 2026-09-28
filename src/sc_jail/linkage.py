@@ -9,6 +9,7 @@ is inferred here.
 
 from collections import Counter, defaultdict
 from datetime import date
+from statistics import median_high
 
 from .bonds import held_at_snapshot, latest_complete
 from .exporters import export_courts
@@ -129,12 +130,10 @@ def court_date_changes(bookings, zone):
             previous = version
         if passed:
             passed_per_booking[min(passed, 3)] += 1
-    moved.sort()
-    next_after.sort()
     return {
         "changes": {kind: kinds[kind] for kind in CHANGE_KINDS},
-        "median_days_reset_moved": moved[len(moved) // 2] if moved else None,
-        "median_days_to_next_date": next_after[len(next_after) // 2] if next_after else None,
+        "median_days_reset_moved": median_high(moved) if moved else None,
+        "median_days_to_next_date": median_high(next_after) if next_after else None,
         "bookings_by_dates_passed": {"1": passed_per_booking[1], "2": passed_per_booking[2],
                                      "3 or more": passed_per_booking[3]},
     }

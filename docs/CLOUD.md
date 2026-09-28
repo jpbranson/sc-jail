@@ -3,20 +3,36 @@
 ## Current deployment
 
 Initially deployed September 22, 2026; updated to 0.2.0 on September 23 UTC and
-redeployed on September 26 and 27. The live service configuration, Scheduler, backup
+redeployed on September 26, 27, and 28. The live service configuration, Scheduler, backup
 settings, and public endpoints were rechecked on September 23. See the
 [0.2.0 release record](RELEASE_0_2_0.md) for that release's validation.
 
-**September 27 (current).** Both services run the image built from `main` at
+**September 28 (current).** Both services run the image built from `main` at
+`b79b987` (source-content revision `source-424d53799066411519a4`, image digest
+`sha256:144ed915b67e73a01124c12824847c9612de7ac2bd945f9fdca9236a86ae6656`, tag
+`latest`). Cloud Build `5548cbe1-fe4c-4c60-91e4-f9399547940e` passed all 201 tests
+and lint on Linux/Python 3.13 before publishing it. The collector serves revision
+`sc-jail-collector-00008-bqk` and the dashboard `sc-jail-dashboard-00007-xws`, each
+with all traffic and the same size as before (0.25 vCPU, 512 MiB, zero to one
+instance). This update removes dead code, duplicated helpers, and unneeded archive
+reads without changing collected data, dashboard output, or the analysis reports
+([pull request 6](https://github.com/jpbranson/sc-jail/pull/6)). The first scheduled
+slot on the new collector (01:45 UTC) missed its IML roster: all three attempts saw the
+roster total fall mid-scan and were rejected, the known
+[pagination shift](SOURCE_QUALITY.md); XFER, court reports, and 78 record pages were
+collected. The 02:00 slot succeeded for every product in 192 seconds, and
+`/api/freshness` returned HTTP 200 with every product healthy.
+
+**September 27 (superseded).** Both services ran the image built from `main` at
 `40394b1` (source-content revision `source-50494c7394b56dc88c29`, image digest
 `sha256:8472a7677f775f2a5bcc4d178d73e9a83018545fb5125457621c5a59487d3fdc`, tag
 `latest`). Cloud Build `502d71db-9f73-4f7d-b3b8-507e148e2b04` ran the tests and lint
 on Linux/Python 3.13, and both of its steps succeeded before it published the image;
-the same tree passes all 201 tests locally. The collector serves revision
+the same tree passed all 201 tests locally. The collector served revision
 `sc-jail-collector-00007-8mq` and the dashboard `sc-jail-dashboard-00006-kzl`, each
 with all traffic and the same size as before (0.25 vCPU, 512 MiB, zero to one
-instance). This update adds a `health` object to `/api/freshness` for the project
-tracker; the route's 200/503 and the collection code are unchanged. The first
+instance). This update added a `health` object to `/api/freshness` for the project
+tracker; the route's 200/503 and the collection code were unchanged. The first
 scheduled pass on the new collector (the 21:15 UTC slot) succeeded in 139 seconds,
 and `/api/freshness` returned HTTP 200 with every product healthy.
 
@@ -34,13 +50,14 @@ local analysis modules, which neither service runs. The first scheduled pass on 
 new collector (02:45 UTC) succeeded in 176 seconds, and every freshness check
 returned HTTP 200.
 
-For rollback, the previous image is the September 26 build
-(`sha256:c2d936d6d38dce6867b563e8a9628df1a9043abe8401da634c58a2532ff5ed30`). It is
+For rollback, the previous image is the September 27 build
+(`sha256:8472a7677f775f2a5bcc4d178d73e9a83018545fb5125457621c5a59487d3fdc`). It is
 untagged, so the image cleanup policy keeps it only while it is one of the two most
 recent versions; tag it to keep it past the next two builds. The September 23 image
 (`sha256:cab94e326b8ca956088a552e329c20f242f44e96d738f3ca859ce805062edb5b`) is
 still tagged `detail-refresh-20260923`. Untagged images other than the two most
-recent, including the 0.2.0 image, are removed seven days after they were built.
+recent, including the 0.2.0 and September 26 images, are removed seven days after
+they were built.
 Deploy a retained digest with `--image` as described under owner setup.
 
 **September 23 detail-refresh fix (superseded).** The collector received an

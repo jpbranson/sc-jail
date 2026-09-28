@@ -9,7 +9,6 @@ Counts from 1 to 9 are shown as "<10" in the HTML report; summary.json is privat
 """
 
 import argparse
-import gzip
 import html
 import json
 from datetime import datetime, time, timedelta
@@ -24,14 +23,10 @@ from sc_jail.storage import LocalStore, read_json
 
 def population_points(store):
     points = {"iml": [], "xfer": []}
-    for key in store.keys("private/observations/"):
-        if not key.endswith(".json.gz"):
-            continue
-        raw, _ = store.read(key)
-        manifest = json.loads(gzip.decompress(raw))
-        if manifest["source"] in points:
-            points[manifest["source"]].append(manifest["point"])
-    for series in points.values():
+    for source, series in points.items():
+        for key in store.keys(f"private/observations/{source}/"):
+            if key.endswith(".json.gz"):
+                series.append(read_json(store, key)[0]["point"])
         series.sort(key=lambda p: p["slot"])
     return points
 

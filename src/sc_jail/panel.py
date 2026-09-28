@@ -6,6 +6,7 @@ dates of birth are deliberately omitted. The panel must reproduce every archived
 IML population before it is used.
 """
 
+import json
 from datetime import datetime, timedelta, timezone
 
 from .history import HistoryError, observation_key, reconstruct_state, replay_history
@@ -180,3 +181,11 @@ def missing_slots(observations):
             missing.append(slot.astimezone(timezone.utc).isoformat())
         slot += timedelta(minutes=15)
     return missing
+
+
+def load_panel(folder):
+    summary = json.loads((folder / "summary.json").read_text(encoding="utf-8"))
+    if summary.get("population_mismatches"):
+        raise SystemExit(f"{folder} failed its population check; refusing to analyze it")
+    with (folder / "bookings.jsonl").open(encoding="utf-8") as stream:
+        return summary, [json.loads(line) for line in stream]

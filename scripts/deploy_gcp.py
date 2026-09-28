@@ -1,6 +1,7 @@
 """Create/update a dedicated low-cost Cloud Run deployment. No credentials in source."""
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -153,18 +154,17 @@ class Deployment:
                     f"Shelby jail {role}",
                 ],
             )
-        for bucket, role in ((builds, "builder"),):
-            self.run(
-                "storage",
-                "buckets",
-                "add-iam-policy-binding",
-                f"gs://{bucket}",
-                "--member",
-                f"serviceAccount:{accounts[role]}",
-                "--role",
-                "roles/storage.objectAdmin",
-                "--condition=None",
-            )
+        self.run(
+            "storage",
+            "buckets",
+            "add-iam-policy-binding",
+            f"gs://{builds}",
+            "--member",
+            f"serviceAccount:{accounts['builder']}",
+            "--role",
+            "roles/storage.objectAdmin",
+            "--condition=None",
+        )
         self.protect_archive(archive, accounts["collector"])
         self.configure_backup(archive)
         # Cloud Build validates bucket metadata before reading source or writing logs.
@@ -263,8 +263,6 @@ class Deployment:
     @staticmethod
     def source_revision():
         # Includes uncommitted release content when deployment precedes the commit.
-        import hashlib
-
         digest = hashlib.sha256()
         for path in sorted((ROOT / "src" / "sc_jail").rglob("*")):
             if path.is_file() and "__pycache__" not in path.parts:

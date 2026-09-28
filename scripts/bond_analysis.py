@@ -14,16 +14,9 @@ from pathlib import Path
 
 from sc_jail.bonds import EVENT_ORDER, LOW_BONDS, analyze
 from sc_jail.iml import CHICAGO
+from sc_jail.panel import load_panel
 from sc_jail.profile import suppress
 from sc_jail.report_html import days_text, document, fmt, notes, notice, share_text, table, tiles
-
-
-def load_panel(folder):
-    summary = json.loads((folder / "summary.json").read_text(encoding="utf-8"))
-    if summary.get("population_mismatches"):
-        raise SystemExit(f"{folder} failed its population check; refusing to analyze it")
-    with (folder / "bookings.jsonl").open(encoding="utf-8") as stream:
-        return summary, [json.loads(line) for line in stream]
 
 
 def km_cells(result):

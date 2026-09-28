@@ -22,7 +22,7 @@ from .history import (
 from .http import SourceError, SourceHTTP
 from .provenance import provenance
 from .storage import archive_blob, encode, read_json, write_json
-from .xfer import URL, parse_listing, xml_response
+from .xfer import URL, login, parse_listing
 
 CACHE_KEY = "private/checkpoints/xfer_courts.json.gz"
 PARSER_VERSION = 1
@@ -182,17 +182,6 @@ def parse_report(content, family):
     return _normalize_rows(rows, expected)
 
 
-def login(session):
-    response = session.request(
-        "POST",
-        "/Web%20Client/Login.xml",
-        params={"Command": "Login"},
-        data={"user": "public", "pword": "public", "language": "en,US"},
-    )
-    if xml_response(response.content).findtext("result") != "0":
-        raise SourceError("XFER public login did not confirm success")
-
-
 def download(session, file):
     if not 0 < file["size"] <= 25_000_000:
         raise SourceError("Court report size is outside the supported range")
@@ -229,7 +218,7 @@ def download_queue(files, old, moment, hours):
         group.sort(key=lambda f: (f["modified_at"], f["name"]), reverse=True)
     ordered = []
     while groups:
-        for family in sorted(list(groups)):
+        for family in sorted(groups):
             ordered.append(groups[family].pop(0))
             if not groups[family]:
                 del groups[family]

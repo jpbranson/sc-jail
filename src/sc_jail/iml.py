@@ -95,7 +95,7 @@ def start_search(session):
     )
 
 
-def collect(config, observed_at, previous=None):
+def collect(config, observed_at):
     started = time.monotonic()
     pages, rows, total = [], [], None
     try:

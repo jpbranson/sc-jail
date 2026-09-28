@@ -117,7 +117,7 @@ def parse_workbook(content):
         book.release_resources()
 
 
-def collect(config, observed_at, previous=None):
+def collect(config, observed_at):
     with SourceHTTP(URL, user_agent=config.user_agent, budget=config.source_timeout) as session:
         login = session.request(
             "POST",
@@ -151,5 +151,4 @@ def collect(config, observed_at, previous=None):
         "records": records,
         "artifacts": [(file["name"], download.content), ("xfer-listing.xml", listing.content)],
         "source_url": URL,
-        "file": file,
     }

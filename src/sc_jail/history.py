@@ -246,8 +246,6 @@ def reconstruct_state(store, key, *, manifest=None):
                 state = replay_history(store, history, state)
                 digest = history["state_sha256"]
         return state
-    except HistoryError:
-        raise
     except (KeyError, TypeError, ValueError, OSError, EOFError) as exc:
         raise HistoryError("Observation history is invalid or unreadable") from exc
 

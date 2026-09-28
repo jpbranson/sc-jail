@@ -83,7 +83,7 @@ def _new_booking(booking):
     }
 
 
-def build_panel(store, zone):
+def build_panel(store):
     """Return (bookings by number, roster observations with slot, time, and population)."""
     bookings, observations = {}, []
     previous_present = set()

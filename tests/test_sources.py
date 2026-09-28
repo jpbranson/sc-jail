@@ -235,7 +235,7 @@ def test_changed_content_same_metadata_is_always_downloaded(monkeypatch):
 
     monkeypatch.setattr(xfer, "SourceHTTP", Session)
     xfer.collect(Config(), NOW)
-    xfer.collect(Config(), NOW, {"unchanged": True})
+    xfer.collect(Config(), NOW)
     assert calls.count("Download") == 2
 
 

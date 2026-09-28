@@ -1,6 +1,8 @@
 from datetime import date
 from zoneinfo import ZoneInfo
 
+import pytest
+
 from sc_jail.bonds import analyze, bond_events, classify, release_after
 
 CHICAGO = ZoneInfo("America/Chicago")
@@ -64,7 +66,7 @@ def test_analysis_counts_changes_low_bond_stock_and_new_bookings():
     result = analyze([reduced, waiting, new_low], COVERAGE, CHICAGO)
     change = result["changes"]["Bond total reduced"]
     assert change["bookings"] == 1 and change["time_to_release"]["events"] == 1
-    assert result["median_reduction_share"] == 0.6
+    assert result["median_reduction_share"] == pytest.approx(0.6)
     assert result["low_bond_held_now"]["1000"]["people"] == 2
     assert result["low_bond_held_now"]["1000"]["median_days_held"] == 30  # sorted [4, 30]
     assert result["low_bond_held_now"]["1000"]["held_over_30_days"] == 0

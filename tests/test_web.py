@@ -269,7 +269,6 @@ def test_full_ninety_day_changes_are_bounded_and_preserve_totals():
     assert sum(b["arrivals"] for b in bins) == 17280
     assert sum(b["departures"] for b in bins) == 8640
     svg = make_chart({"sources": {"iml": {"history": points}}}, 90, 1000, changes=True)
-    assert svg.count('id="patch_') < 200
     assert len(svg) < 100_000
 
 

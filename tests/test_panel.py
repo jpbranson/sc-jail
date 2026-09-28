@@ -64,7 +64,7 @@ def test_panel_tracks_spans_releases_and_outcomes(tmp_path):
     # A missed slot (at 30) does not split a span; absence from a complete roster does.
     observe(store, "iml", [roster("B2", "P2", "2026-09-20"), roster("B3", "P3")], at(45))
     observe(store, "iml", [roster("B1", "P1"), roster("B3", "P3")], at(60))
-    bookings, observations = build_panel(store, CHICAGO)
+    bookings, observations = build_panel(store)
     b1, b2, b3 = bookings["B1"], bookings["B2"], bookings["B3"]
     assert b1["spans"] == [[at(0).isoformat(), at(15).isoformat()],
                            [at(60).isoformat(), at(60).isoformat()]]
@@ -80,7 +80,7 @@ def test_booking_that_leaves_without_a_release_date_is_disappeared(tmp_path):
     store = LocalStore(tmp_path)
     observe(store, "iml", [roster("B1", "P1"), roster("B2", "P2")], at(0))
     observe(store, "iml", [roster("B2", "P2")], at(15))
-    bookings, _ = build_panel(store, CHICAGO)
+    bookings, _ = build_panel(store)
     assert bookings["B1"]["outcome"] == "disappeared"
 
 
@@ -89,7 +89,7 @@ def test_withdrawn_release_and_reassigned_person_match_archived_populations(tmp_
     observe(store, "iml", [roster("B1", "P1"), roster("B2", "P2")], at(0))
     observe(store, "iml", [roster("B1", "P1", "2026-09-20"), roster("B2", "P2")], at(15))
     observe(store, "iml", [roster("B1", "P1"), roster("B2", "P1")], at(30))
-    bookings, observations = build_panel(store, CHICAGO)
+    bookings, observations = build_panel(store)
     assert bookings["B1"]["release_history"] == [[at(15).isoformat(), "2026-09-20"],
                                                   [at(30).isoformat(), None]]
     assert bookings["B2"]["permanent_ids"] == ["P1", "P2"]
@@ -102,7 +102,7 @@ def test_withdrawn_release_and_reassigned_person_match_archived_populations(tmp_
 def test_population_mismatch_is_reported(tmp_path):
     store = LocalStore(tmp_path)
     observe(store, "iml", [roster("B1", "P1")], at(0), archived=2)
-    bookings, observations = build_panel(store, CHICAGO)
+    bookings, observations = build_panel(store)
     assert check_populations(bookings, observations, CHICAGO) == [
         {"observed_at": at(0).isoformat(), "archived": 2, "panel": 1}]
 
@@ -116,7 +116,7 @@ def test_detail_versions_record_only_changed_facts(tmp_path):
     observe(store, "iml_details", [detail("B1", bond="2500.00", court="10/15/2026 09:00")], at(30))
     observe(store, "iml_details", [detail("B1", bond="2500.00", court="10/15/2026 09:00"),
                                    detail("UNLISTED")], at(45))
-    bookings, _ = build_panel(store, CHICAGO)
+    bookings, _ = build_panel(store)
     versions = bookings["B1"]["details"]
     assert [(v["at"], v["bond_total"], v["next_court"]) for v in versions] == [
         (at(0).isoformat(), 5000.0, "2026-09-30"),
@@ -129,4 +129,4 @@ def test_detail_versions_record_only_changed_facts(tmp_path):
 
 def test_empty_archive_is_an_error(tmp_path):
     with pytest.raises(RuntimeError):
-        build_panel(LocalStore(tmp_path), CHICAGO)
+        build_panel(LocalStore(tmp_path))

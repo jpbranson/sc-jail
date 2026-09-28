@@ -49,7 +49,7 @@ def main():
     args = parser.parse_args()
     if not (args.data_dir / "private").is_dir():
         parser.error(f"{args.data_dir} does not look like an archive copy")
-    bookings, observations = build_panel(LocalStore(args.data_dir), CHICAGO)
+    bookings, observations = build_panel(LocalStore(args.data_dir))
     mismatches = check_populations(bookings, observations, CHICAGO)
     missing = missing_slots(observations)
     summary = summarize(bookings, observations, mismatches, missing)

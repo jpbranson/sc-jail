@@ -14,6 +14,7 @@ from pathlib import Path
 from sc_jail.exporters import export_details
 from sc_jail.iml import CHICAGO
 from sc_jail.linkage import CHANGE_KINDS, PASSED, RESET, analyze, case_statuses, load_courts
+from sc_jail.panel import load_panel
 from sc_jail.profile import suppress
 from sc_jail.report_html import document, fmt, notes, notice, pct, table, tiles
 from sc_jail.storage import LocalStore
@@ -23,14 +24,6 @@ FAMILY_TITLES = {
     "gs_calendar": "General Sessions calendars",
     "indictments": "Daily indictment lists",
 }
-
-
-def load_panel(folder):
-    summary = json.loads((folder / "summary.json").read_text(encoding="utf-8"))
-    if summary.get("population_mismatches"):
-        raise SystemExit(f"{folder} failed its population check; refusing to analyze it")
-    with (folder / "bookings.jsonl").open(encoding="utf-8") as stream:
-        return summary, [json.loads(line) for line in stream]
 
 
 def share(part, whole):

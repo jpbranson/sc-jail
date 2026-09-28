@@ -2,12 +2,10 @@
 
 import argparse
 import csv
-import gzip
-import json
 from pathlib import Path
 
 from sc_jail.config import Config
-from sc_jail.storage import make_store
+from sc_jail.storage import make_store, read_json
 
 
 def main():
@@ -16,7 +14,8 @@ def main():
     args = parser.parse_args()
     config = Config.from_env()
     store = make_store(config)
-    keys = [k for k in store.keys("private/observations/") if k.endswith(".json.gz")]
+    keys = [k for source in ("iml", "xfer") for k in store.keys(f"private/observations/{source}/")
+            if k.endswith(".json.gz")]
     fields = [
         "source",
         "slot",
@@ -30,18 +29,14 @@ def main():
         "listed_records",
         "charge_rows",
     ]
-    exported = 0
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=fields, extrasaction="ignore")
         writer.writeheader()
         for key in keys:
-            raw, _ = store.read(key)
-            manifest = json.loads(gzip.decompress(raw))
-            if manifest["source"] in {"iml", "xfer"}:
-                writer.writerow({"source": manifest["source"], **manifest["point"]})
-                exported += 1
-    print(f"Exported {exported} observations to {args.output}")
+            manifest, _ = read_json(store, key)
+            writer.writerow({"source": manifest["source"], **manifest["point"]})
+    print(f"Exported {len(keys)} observations to {args.output}")
 
 
 if __name__ == "__main__":

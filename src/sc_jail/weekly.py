@@ -15,7 +15,7 @@ import re
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Callable
@@ -34,7 +34,6 @@ class Step:
     needs: tuple = ()
     report: str | None = None
     timeout: float = 3 * 3600
-    notes: list = field(default_factory=list)
 
 
 def latest_slot(data_dir, source):

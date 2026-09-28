@@ -8,10 +8,10 @@ private summary.json and an aggregate report.html (groups under 10 bookings supp
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
 from sc_jail.iml import CHICAGO
+from sc_jail.panel import load_panel
 from sc_jail.profile import suppress
 from sc_jail.report_html import (
     days_text,
@@ -34,15 +34,6 @@ GROUP_TITLES = {
                [label for _, label in AMOUNT_BANDS]),
     "detainer": ("Detainer when the record was complete", DETAINER_ORDER),
 }
-
-
-def load_panel(folder):
-    summary = json.loads((folder / "summary.json").read_text(encoding="utf-8"))
-    if summary.get("population_mismatches"):
-        sys.exit(f"{folder} failed its population check; refusing to analyze it")
-    with (folder / "bookings.jsonl").open(encoding="utf-8") as stream:
-        bookings = [json.loads(line) for line in stream]
-    return summary, bookings
 
 
 def held_cell(group, day):

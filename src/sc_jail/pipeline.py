@@ -94,7 +94,7 @@ def collect_all(config, store, *, scheduled_at=None, adapters=None, now=utc_now)
                         source_timeout=min(config.source_timeout, remaining),
                         iml_timeout=min(config.iml_timeout, remaining),
                     )
-                    payload = adapter(source_config, source_start, checkpoint)
+                    payload = adapter(source_config, source_start)
                     seen = set(checkpoint.get("seen_ids", [])) | set(payload["seen_ids"])
                     point = {
                         "slot": slot.isoformat(),

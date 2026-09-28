@@ -12,14 +12,6 @@ function widthStep(width) {
   return Math.max(360, Math.min(1800, Math.floor(width / 60) * 60));
 }
 
-function decoded(image) {
-  if (image.decode) return image.decode();
-  return new Promise((resolve, reject) => {
-    image.onload = resolve;
-    image.onerror = reject;
-  });
-}
-
 function prepareChart(plot) {
   let step = 0;
   let version = plot.dataset.version;
@@ -75,7 +67,7 @@ function prepareChart(plot) {
       }
       // Bypass a cached failure when retrying, including a manual retry.
       image.src = url + (attempt || force ? "&retry=" + Date.now() + "-" + attempt : "");
-      decoded(image).then(() => finish(true), () => finish(false));
+      image.decode().then(() => finish(true), () => finish(false));
     }
     requestChart();
   }

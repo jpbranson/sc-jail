@@ -10,6 +10,7 @@ collector's population rule. Results are counts, never person-level rows.
 from bisect import bisect_left
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
+from statistics import median
 
 from .panel import replay
 from .profile import parse_date
@@ -251,9 +252,6 @@ def by_day(pairs, zone):
         rows = days[day]
         entry = {"day": day, "versions": len(rows)}
         for field in fields:
-            values = sorted(r[field] for r in rows)
-            middle = len(values) // 2
-            entry[field] = (values[middle] if len(values) % 2 else
-                            (values[middle - 1] + values[middle]) / 2)
+            entry[field] = median(r[field] for r in rows)
         out.append(entry)
     return out

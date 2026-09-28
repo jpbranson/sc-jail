@@ -68,18 +68,6 @@ def freshness_health(products, storage_error):
             "detail": "; ".join(problems) or "IML and XFER collecting normally", "checks": checks}
 
 
-def make_chart(*args, **kwargs):
-    from .charts import make_chart as render
-
-    return render(*args, **kwargs)
-
-
-def make_repeat_chart(*args, **kwargs):
-    from .charts import make_repeat_chart as render
-
-    return render(*args, **kwargs)
-
-
 def create_app(config, store):
     app = Flask(__name__)
     # Ship the small, trusted display assets with the HTML so a missed asset
@@ -189,12 +177,14 @@ def create_app(config, store):
         with chart_lock:
             svg = chart_cache.get(key)
             if svg is None:
+                from . import charts
+
                 svg = (
-                    make_repeat_chart(
+                    charts.make_repeat_chart(
                         data.get("repeat_visits", {}), width, intervals=kind == "visit-intervals"
                     )
                     if kind in ("repeat-visits", "visit-intervals")
-                    else make_chart(data, days, width, changes=kind == "changes")
+                    else charts.make_chart(data, days, width, changes=kind == "changes")
                 )
                 chart_cache[key] = svg
                 while len(chart_cache) > 32:

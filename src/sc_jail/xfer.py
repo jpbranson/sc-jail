@@ -117,16 +117,20 @@ def parse_workbook(content):
         book.release_resources()
 
 
-def collect(config, observed_at, previous=None):
+def login(session):
+    response = session.request(
+        "POST",
+        "/Web%20Client/Login.xml",
+        params={"Command": "Login"},
+        data={"user": "public", "pword": "public", "language": "en,US"},
+    )
+    if xml_response(response.content).findtext("result") != "0":
+        raise SourceError("XFER public login did not confirm success")
+
+
+def collect(config, observed_at):
     with SourceHTTP(URL, user_agent=config.user_agent, budget=config.source_timeout) as session:
-        login = session.request(
-            "POST",
-            "/Web%20Client/Login.xml",
-            params={"Command": "Login"},
-            data={"user": "public", "pword": "public", "language": "en,US"},
-        )
-        if xml_response(login.content).findtext("result") != "0":
-            raise SourceError("XFER public login did not confirm success")
+        login(session)
         listing = session.request(
             "GET", "/Web%20Client/ListError.xml", params={"Command": "List", "Dir": config.xfer_dir}
         )
@@ -151,5 +155,4 @@ def collect(config, observed_at, previous=None):
         "records": records,
         "artifacts": [(file["name"], download.content), ("xfer-listing.xml", listing.content)],
         "source_url": URL,
-        "file": file,
     }

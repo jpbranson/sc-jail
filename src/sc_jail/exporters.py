@@ -4,7 +4,13 @@ import gzip
 import hashlib
 import json
 
-from .history import MAX_CHAIN, HistoryError, observation_key, reconstruct_state
+from .history import (
+    MAX_CHAIN,
+    HistoryError,
+    observation_key,
+    reconstruct_state,
+    restore_observation,
+)
 from .storage import read_json
 
 
@@ -51,8 +57,6 @@ def export_details(store, *, slot=None, booking=None, case=None):
         if not cache:
             return
         # Validate the cache against its committed manifest before exporting.
-        from .history import restore_observation
-
         manifest, _ = read_json(store, cache["manifest_key"])
         state = restore_observation(store, cache["manifest_key"], manifest, cache)
         checks, stamp = cache["checks"], cache["slot"]
@@ -85,8 +89,6 @@ def report_inventory(store, *, slot=None, family=None, all_versions=False):
         cache, _ = read_json(store, "private/checkpoints/xfer_courts.json.gz", {})
         if not cache:
             return
-        from .history import restore_observation
-
         manifest, _ = read_json(store, cache["manifest_key"])
         state = restore_observation(store, cache["manifest_key"], manifest, cache)
     selected = {}

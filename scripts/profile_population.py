@@ -9,7 +9,6 @@ Counts from 1 to 9 are shown as "<10" in the HTML report; summary.json is privat
 """
 
 import argparse
-import gzip
 import html
 import json
 from datetime import datetime, time, timedelta
@@ -18,20 +17,16 @@ from pathlib import Path
 from sc_jail.exporters import export_details
 from sc_jail.iml import CHICAGO
 from sc_jail.profile import movement, profile, suppress
-from sc_jail.report_html import CSS, bars, fmt, pct, table
+from sc_jail.report_html import CSS, bars, fmt, pct, table, tiles
 from sc_jail.storage import LocalStore, read_json
 
 
 def population_points(store):
     points = {"iml": [], "xfer": []}
-    for key in store.keys("private/observations/"):
-        if not key.endswith(".json.gz"):
-            continue
-        raw, _ = store.read(key)
-        manifest = json.loads(gzip.decompress(raw))
-        if manifest["source"] in points:
-            points[manifest["source"]].append(manifest["point"])
-    for series in points.values():
+    for source, series in points.items():
+        for key in store.keys(f"private/observations/{source}/"):
+            if key.endswith(".json.gz"):
+                series.append(read_json(store, key)[0]["point"])
         series.sort(key=lambda p: p["slot"])
     return points
 
@@ -112,16 +107,12 @@ def render(summary, points, daily):
            [[f"Ethnicity: {k}", suppress(v)] for k, v in p["ethnicity"]]
     flow_rows = [[d["day"], d["first_seen"], d["released"], d["first_seen"] - d["released"]]
                  for d in daily]
-    tiles = [
+    tile_html = tiles([
         ("People listed as held", f"{n:,}"),
         ("Median time held so far", f"{p['held_median_days']:,.0f} days"),
         ("Held more than a year", f"{p['held_over_year_share']:.0%}"),
         ("No case marked sentenced", pct(pretrial.get("people", 0), n)),
-    ]
-    tile_html = "".join(
-        f'<div class="tile"><div class="label">{html.escape(a)}</div><div class="value">{html.escape(b)}</div></div>'
-        for a, b in tiles
-    )
+    ])
     avg = (f"Across {len(daily)} complete Central-time days, the roster averaged "
            f"{sum(d['first_seen'] for d in daily) / len(daily):,.0f} new bookings and "
            f"{sum(d['released'] for d in daily) / len(daily):,.0f} releases a day."
@@ -135,7 +126,7 @@ def render(summary, points, daily):
 <h1>Shelby County jail population profile</h1>
 <p class="lede">People listed as held on {p['as_of']} (Central time), from the Sheriff's public
 jail roster and individual record pages. Aggregate counts only; counts from 1 to 9 are shown as “&lt;10”.</p>
-<div class="tiles">{tile_html}</div>
+{tile_html}
 
 <h2>Time held so far</h2>
 <p>Days from the listed commitment date to {p['as_of']}. This is a snapshot of who is held

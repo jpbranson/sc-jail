@@ -10,6 +10,7 @@ from matplotlib import dates as mdates
 from matplotlib import rc_context
 from matplotlib.backends.backend_svg import FigureCanvasSVG
 from matplotlib.figure import Figure
+from matplotlib.ticker import MaxNLocator
 
 CHICAGO = ZoneInfo("America/Chicago")
 LABELS = {"iml": "IML roster: people", "xfer": "In-jail report: bookings"}
@@ -181,8 +182,6 @@ def make_repeat_chart(summary, width, *, intervals=False):
             ax.set_xlim(0, max(1.5, limit * 1.25))
             for position, value in enumerate(values):
                 ax.text(value + limit * 0.025, position, f"{value:,}", va="center")
-            from matplotlib.ticker import MaxNLocator
-
             ax.xaxis.set_major_locator(MaxNLocator(nbins=3 if width < 500 else 5, integer=True))
             ax.set_xlabel("Intervals" if intervals else "People", labelpad=10)
             ax.set_axisbelow(True)

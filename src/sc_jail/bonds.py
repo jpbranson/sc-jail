@@ -8,6 +8,7 @@ or "Sentenced" status is never treated as a disposition, and no case outcome is 
 
 from collections import Counter
 from datetime import date
+from statistics import median_high
 
 from .stays import MAX_ADMISSION_LAG_DAYS, complete, first_decided, local_date
 from .survival import summarize
@@ -123,13 +124,11 @@ def analyze(bookings, coverage, zone):
                 flow[limit].append(outcome)
 
     def stock_summary(days):
-        ordered = sorted(days)
         return {"people": len(days),
-                "median_days_held": ordered[len(ordered) // 2] if ordered else None,
+                "median_days_held": median_high(days) if days else None,
                 "held_over_30_days": sum(d > 30 for d in days),
                 "held_over_90_days": sum(d > 90 for d in days)}
 
-    reductions.sort()
     return {
         "coverage_start": coverage["first"],
         "snapshot": coverage["last"],
@@ -141,7 +140,7 @@ def analyze(bookings, coverage, zone):
                            "seen_after_release": seen_after_release[kind],
                            "time_to_release": summarize(changes[kind]) if changes[kind] else None}
                     for kind in EVENT_ORDER},
-        "median_reduction_share": reductions[len(reductions) // 2] if reductions else None,
+        "median_reduction_share": median_high(reductions) if reductions else None,
         "low_bond_held_now": {str(limit): stock_summary(days) for limit, days in stock.items()},
         "low_bond_new_bookings": {str(limit): summarize(obs) if obs else None
                                   for limit, obs in flow.items()},

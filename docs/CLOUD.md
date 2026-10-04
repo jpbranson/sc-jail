@@ -3,15 +3,39 @@
 ## Current deployment
 
 Initially deployed September 22, 2026; updated to 0.2.0 on September 23 UTC and
-redeployed on September 26, 27, and 28. The live service configuration, Scheduler, backup
-settings, and public endpoints were rechecked on September 23. See the
-[0.2.0 release record](RELEASE_0_2_0.md) for that release's validation.
+redeployed on September 26, 27, and 28 and twice on October 4. The live service
+configuration, Scheduler, backup settings, and public endpoints were rechecked on
+September 23 and October 4. See the [0.2.0 release record](RELEASE_0_2_0.md) for that
+release's validation.
 
-**September 28 (current).** Both services run the image built from `main` at
+**October 4, 16:24 UTC (current).** Both services run the image built from commit
+`5ced56f` (source-content revision `source-50a819277748bb90cd0e`, image digest
+`sha256:2276038d8242ff39ef3efcf2b2bcd8345169d8a63c0a3cac77d3f4d08c03dc73`, tag
+`latest`). Cloud Build `93169c13-5820-4be5-aac6-858296879c30` passed all 205 tests
+and lint on Linux/Python 3.13 before publishing it. The collector serves revision
+`sc-jail-collector-00010-2lm` and the dashboard `sc-jail-dashboard-00009-2q2`, each
+with all traffic and the same size as before. From 05:22 UTC, every IML roster scan
+was rejected because one booking was listed with a blank permanent ID
+([source-quality log](SOURCE_QUALITY.md)), which also stopped record-page collection.
+This update accepts such a row, archives it, and counts it as a booking but not as a
+person. The 16:30 UTC slot succeeded for every product in 327 seconds, repeat-visit
+analytics caught up to that slot, and `/api/freshness` returned HTTP 200. Record
+pages were still clearing the outage backlog (2,968 of 3,312 fresh). The backup ran
+normally at 05:10 UTC with no failed objects.
+
+**October 4, 16:06 UTC (superseded).** Revisions `sc-jail-collector-00009-cf7` and
+`sc-jail-dashboard-00008-7h8` ran image
+`sha256:2c651baad5b39cf6979173f8dd85a8db76a3e2e0fcc9e5b272064e04b9221f0a`
+(`source-bfc02aba7e78e77ab462`, Cloud Build `62f7bee3-94d0-4509-bee9-1d51cf9cbdae`,
+204 tests). Its 16:15 slot restored the roster and record pages, but the repeat-visit
+refresh still rejected the blank permanent ID, so that analytics stayed delayed until
+the next deployment. This image was never committed as a separate tree.
+
+**September 28 (superseded).** Both services ran the image built from `main` at
 `b79b987` (source-content revision `source-424d53799066411519a4`, image digest
 `sha256:144ed915b67e73a01124c12824847c9612de7ac2bd945f9fdca9236a86ae6656`, tag
 `latest`). Cloud Build `5548cbe1-fe4c-4c60-91e4-f9399547940e` passed all 201 tests
-and lint on Linux/Python 3.13 before publishing it. The collector serves revision
+and lint on Linux/Python 3.13 before publishing it. The collector served revision
 `sc-jail-collector-00008-bqk` and the dashboard `sc-jail-dashboard-00007-xws`, each
 with all traffic and the same size as before (0.25 vCPU, 512 MiB, zero to one
 instance). This update removes dead code, duplicated helpers, and unneeded archive
@@ -50,14 +74,13 @@ local analysis modules, which neither service runs. The first scheduled pass on 
 new collector (02:45 UTC) succeeded in 176 seconds, and every freshness check
 returned HTTP 200.
 
-For rollback, the previous image is the September 27 build
-(`sha256:8472a7677f775f2a5bcc4d178d73e9a83018545fb5125457621c5a59487d3fdc`). It is
-untagged, so the image cleanup policy keeps it only while it is one of the two most
-recent versions; tag it to keep it past the next two builds. The September 23 image
+For rollback, the image before the October 4 fix is the September 28 build
+(`sha256:144ed915…`), but it rejects the roster while a blank permanent ID is listed.
+The cleanup policy keeps only the two most recent images (now both October 4 builds)
+and removes other untagged images seven days after they were built, so the September
+27 and 28 images are due for removal; tag one to keep it. The September 23 image
 (`sha256:cab94e326b8ca956088a552e329c20f242f44e96d738f3ca859ce805062edb5b`) is
-still tagged `detail-refresh-20260923`. Untagged images other than the two most
-recent, including the 0.2.0 and September 26 images, are removed seven days after
-they were built.
+still tagged `detail-refresh-20260923`.
 Deploy a retained digest with `--image` as described under owner setup.
 
 **September 23 detail-refresh fix (superseded).** The collector received an

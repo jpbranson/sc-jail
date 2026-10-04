@@ -98,7 +98,8 @@ def build_panel(store):
             history = booking["permanent_id_history"]
             if not history or history[-1][1] != row["permanent_id"]:
                 history.append([at, row["permanent_id"]])
-                booking["permanent_ids"] = sorted({*booking["permanent_ids"], row["permanent_id"]})
+                if row["permanent_id"]:
+                    booking["permanent_ids"] = sorted({*booking["permanent_ids"], row["permanent_id"]})
             booking["first_seen_at"] = booking["first_seen_at"] or at
             booking["last_seen_at"] = at
             # A booking absent from any complete roster starts a new presence span.
@@ -166,6 +167,7 @@ def check_populations(bookings, observations, zone):
     for point in observations:
         at, expected = point["observed_at"], point["population"]
         people = {value_at(b["permanent_id_history"], at) for b in rows if held_at(b, at, zone)}
+        people.discard("")  # the collector counts no one for a blank permanent ID
         if len(people) != expected:
             mismatches.append({"observed_at": at, "archived": expected, "panel": len(people)})
     return mismatches

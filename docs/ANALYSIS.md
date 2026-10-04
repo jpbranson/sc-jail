@@ -195,7 +195,10 @@ September 25 (76 of 80 workbook versions aligned): 3,026 bookings were in both s
 XFER listed 136 bookings the IML roster never showed, all booked more than a week earlier
 (92 more than a year); 8 IML-held bookings were missing from XFER. Book dates matched IML
 commitment dates for every shared booking and case-number sets matched for 2,913 of
-3,026. See the [source-quality log](SOURCE_QUALITY.md).
+3,026. September 30 (131 of 135 versions aligned): 3,057 in both, 135 only in XFER, and
+8 IML-held bookings missing from XFER; book dates again matched for every shared booking.
+The XFER-only bookings are a stable set of older, active adult cases that IML never
+lists; the cause is unconfirmed. See the [source-quality log](SOURCE_QUALITY.md).
 
 ## Length of stay
 

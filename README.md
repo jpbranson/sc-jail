@@ -7,6 +7,7 @@ collection when started. The two county sources are measured separately:
 - **IML:** distinct permanent IDs with a blank release date or one after today's
   Memphis date. The complete result set includes recently released records,
   which remain in the private archive but are excluded from the current count.
+  A booking listed before IML assigns its permanent ID is archived but counts no one.
 - **XFER:** distinct booking numbers in `/SCSO-InJail/SCSO-InJail.xls`. A person
   can have several charge rows and potentially several bookings.
 

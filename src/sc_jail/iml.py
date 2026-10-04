@@ -33,7 +33,8 @@ def parse_page(html):
             raise SourceError("IML roster columns changed")
         values = [" ".join(c.get_text(" ", strip=True).split()) for c in cells]
         result = re.search(r"submitInmate\('([^']+)'", link["href"])
-        if not result or not values[1] or not values[2]:
+        # IML can list a booking before assigning its permanent ID; the booking still counts.
+        if not result or not values[1]:
             raise SourceError("IML record identifier missing")
         release = values[4]
         if release:
@@ -58,8 +59,10 @@ def parse_page(html):
 
 def summarize(rows, observed_at):
     today = observed_at.astimezone(CHICAGO).date().isoformat()
-    active = {r["permanent_id"] for r in rows if not r["release_date"] or r["release_date"] > today}
-    seen = {r["permanent_id"] for r in rows}
+    # A blank permanent ID identifies no one, so it is left out of person counts.
+    people = [r for r in rows if r["permanent_id"]]
+    active = {r["permanent_id"] for r in people if not r["release_date"] or r["release_date"] > today}
+    seen = {r["permanent_id"] for r in people}
     return (
         {
             "population": len(active),
@@ -151,6 +154,9 @@ def collect(config, observed_at):
                             future.cancel()
             if len(rows) != total or len({r["result_id"] for r in rows}) != total:
                 raise SourceError("IML roster is incomplete or contains duplicate result IDs")
+            if blank := sum(1 for r in rows if not r["permanent_id"]):
+                log.warning("IML roster lists %s bookings without a permanent ID; "
+                            "they are excluded from person counts", blank)
     except SourceError as exc:
         raise SourceError(
             f"{exc}; {len(pages)} pages, {len(rows)}/{total if total is not None else '?'} "

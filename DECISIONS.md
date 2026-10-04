@@ -113,3 +113,8 @@ See [cloud operations](docs/CLOUD.md) for the deployed resources and verificatio
   account's free allowances and the case where other projects have used them.
 - 2026-09-26: Lower the budget alert from $15 to $5 (owner approved), keeping alerts at
   50%, 90%, and 100% of actual spend and 100% of forecast. It alerts; it does not cap.
+
+- 2026-10-04: Accept an IML roster row with a blank permanent ID (owner approved). One
+  such booking rejected every roster scan for 11 hours. The booking number and result ID
+  remain required; the row is archived and counted as a booking, but counts no one in the
+  population or other person-based results until IML assigns an ID.

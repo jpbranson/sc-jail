@@ -2,7 +2,13 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from sc_jail.history import cached_state, canonical_state, make_history, observation_key
+from sc_jail.history import (
+    HistoryError,
+    cached_state,
+    canonical_state,
+    make_history,
+    observation_key,
+)
 from sc_jail.repeats import (
     CACHE_KEY,
     record_details,
@@ -103,6 +109,22 @@ def test_date_corrections_and_identity_conflicts():
     result = summarize_visits(data)
     assert result["excluded_bookings"] == 2
     assert result["repeat_people"] == 0
+
+
+def test_booking_without_permanent_id_is_dated_but_counts_no_one():
+    data = registry()
+    record_roster(data, [roster("A", "ONE"), roster("", "TWO")], NOW.isoformat())
+    record_details(data, [detail("", "TWO", "09/21/2026")], NOW.isoformat())
+    assert data["visits"]["TWO"]["person_ids"] == []
+    result = summarize_visits(data)
+    assert (result["people_seen"], result["bookings_seen"], result["excluded_bookings"]) == (1, 1, 0)
+    later = (NOW + timedelta(hours=1)).isoformat()
+    record_roster(data, [roster("A", "ONE"), roster("B", "TWO")], later)
+    assert data["visits"]["TWO"] == {"person_ids": ["B"], "first_seen_at": NOW.isoformat(),
+                                     "commitment_date": "2026-09-21", "release_date": None}
+    assert summarize_visits(data)["people_seen"] == 2
+    with pytest.raises(HistoryError):
+        record_roster(data, [roster("C", "")], later)
 
 
 def test_archive_backfill_retains_departed_bookings_and_is_idempotent(tmp_path):

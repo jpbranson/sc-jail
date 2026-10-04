@@ -27,6 +27,8 @@ also unmeasured. Overlapping dates, a release before commitment, or equal
 commitment dates with ambiguous booking order are excluded from the histogram.
 The dashboard separately reports measured, missing-date, and invalid/ambiguous
 interval counts. Conflicting permanent IDs exclude the affected people's bookings.
+A booking listed before IML assigns its permanent ID keeps its first-seen time (so it
+counts in daily first-seen bookings) but belongs to no person until an ID appears.
 
 ## Updating
 

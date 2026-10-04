@@ -11,13 +11,13 @@ from sc_jail.http import SourceError
 NOW = datetime(2026, 9, 19, 8, 0, tzinfo=timezone.utc)
 
 
-def page(start, total, ids, release=""):
+def page(start, total, ids, release="", booking="BK{}", person="P{}"):
     rows = []
     for ident in ids:
         cells = [
             f"<a class=\"underlined\" href=\"javascript:submitInmate('{ident}','')\">TEST PERSON</a>",
-            f"BK{ident}",
-            f"P{ident}",
+            booking.format(ident),
+            person.format(ident),
             "01/01/1990",
             release,
         ]
@@ -37,11 +37,22 @@ def test_iml_page_uses_links_not_table_number():
         "<html>Service unavailable</html>",
         "Showing 1 to 30 of 30 results",
         page(1, 1, [1], release="not a date"),
+        page(1, 1, [1], booking=""),
     ],
 )
 def test_iml_rejects_error_partial_or_changed_dates(html):
     with pytest.raises(SourceError):
         iml.parse_page(html)
+
+
+def test_iml_booking_without_permanent_id_is_kept_but_counts_no_one():
+    _, _, _, records = iml.parse_page(page(1, 1, [1], release="09/19/2026", person=""))
+    assert records[0]["booking_number"] == "BK1" and records[0]["permanent_id"] == ""
+    rows = [{"permanent_id": "", "booking_number": "1", "release_date": ""},
+            {"permanent_id": "A", "booking_number": "2", "release_date": ""}]
+    metrics, active, seen = iml.summarize(rows, NOW)
+    assert (metrics["population"], metrics["listed_records"], metrics["bookings"]) == (1, 2, 2)
+    assert active == seen == ["A"]
 
 
 def test_iml_pagination_includes_first_and_last(monkeypatch):

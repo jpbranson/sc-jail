@@ -108,7 +108,8 @@ Each row contains:
   list, withdraw, and relist a release date, so each change is kept.
 - `permanent_id_history`: IML sometimes reassigns a booking's permanent ID. Counting
   uses the ID in effect at each moment; counting every ID ever seen inflates the
-  population.
+  population. A blank ID (a booking listed before IML assigned one) counts no one and
+  is left out of `permanent_ids`.
 - `outcome`: `released` (release date listed), `held` (on the latest roster without
   one), or `disappeared` (left the roster without a listed release date).
 - `left_truncated`: present in the first observation, so the booking began before
@@ -245,5 +246,6 @@ scheduled next step. Court-date and indictment timing need four to eight weeks.
 
 `scripts/rebooking.py` follows each release listed during collection until the same IML
 permanent ID is booked again, with Kaplan-Meier estimates. People whose permanent ID was
-ever reassigned are left out (51 of 533 releases on September 25). This covers only this
+ever reassigned are left out (51 of 533 releases on September 25), as are releases of a
+booking that never had a permanent ID; both count in `excluded_reassigned_ids`. This covers only this
 jail during collection and is not a recidivism rate. The readout needs about 90 days.

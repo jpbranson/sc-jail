@@ -34,7 +34,7 @@ def detail(booking, *, bond="5000.00", court="09/30/2026 09:00"):
 def population(rows, moment):
     today = moment.astimezone(CHICAGO).date().isoformat()
     return len({r["permanent_id"] for r in rows
-                if not r["release_date"] or r["release_date"] > today})
+                if r["permanent_id"] and (not r["release_date"] or r["release_date"] > today)})
 
 
 def observe(store, source, rows, moment, *, archived=None):
@@ -96,6 +96,16 @@ def test_withdrawn_release_and_reassigned_person_match_archived_populations(tmp_
     assert value_at(bookings["B2"]["permanent_id_history"], at(20).isoformat()) == "P2"
     # Counting every ID a booking ever had would report 2 people at 30 instead of 1.
     assert [p["population"] for p in observations] == [2, 1, 1]
+    assert check_populations(bookings, observations, CHICAGO) == []
+
+
+def test_booking_without_permanent_id_counts_no_one_until_assigned(tmp_path):
+    store = LocalStore(tmp_path)
+    observe(store, "iml", [roster("B1", "P1"), roster("B2", "")], at(0))
+    observe(store, "iml", [roster("B1", "P1"), roster("B2", "P2")], at(15))
+    bookings, observations = build_panel(store)
+    assert bookings["B2"]["permanent_ids"] == ["P2"]
+    assert [p["population"] for p in observations] == [1, 2]
     assert check_populations(bookings, observations, CHICAGO) == []
 
 

@@ -44,18 +44,20 @@ def record_roster(registry, records, observed_at):
     """Seeing the same booking again, even after a gap, never creates a visit."""
     for row in records:
         person, booking = row["permanent_id"], row["booking_number"]
-        if not person or not booking:
+        if not booking:
             raise HistoryError("Repeat-visit identity is missing")
         visit = registry["visits"].setdefault(
             booking,
             {
-                "person_ids": [person],
+                "person_ids": [],
                 "first_seen_at": observed_at,
                 "commitment_date": None,
                 "release_date": None,
             },
         )
-        visit["person_ids"] = sorted(set(visit["person_ids"]) | {person})
+        # A booking listed before IML assigns its permanent ID is still dated when first seen.
+        if person:
+            visit["person_ids"] = sorted(set(visit["person_ids"]) | {person})
         visit["first_seen_at"] = min(visit["first_seen_at"], observed_at)
         # A correction can remove a previously reported release date.
         visit["release_date"] = _date(row.get("release_date"))
@@ -66,8 +68,8 @@ def record_details(registry, records, observed_at):
         visit = registry["visits"].get(row["booking_number"])
         if visit is None:
             continue
-        person = row["permanent_id"]
-        visit["person_ids"] = sorted(set(visit["person_ids"]) | {person})
+        if row["permanent_id"]:
+            visit["person_ids"] = sorted(set(visit["person_ids"]) | {row["permanent_id"]})
         start = _date(row.get("incarceration", {}).get("Commitment Date"), detail=True)
         observed_date = datetime.fromisoformat(observed_at).astimezone(CHICAGO).date().isoformat()
         visit["commitment_date"] = start if start and start <= observed_date else None
@@ -84,6 +86,8 @@ def summarize_visits(registry):
     people = defaultdict(list)
     excluded = 0
     for visit in registry["visits"].values():
+        if not visit["person_ids"]:
+            continue  # no permanent ID yet, so it belongs to no one
         if any(person in conflicted for person in visit["person_ids"]):
             excluded += 1
         else:

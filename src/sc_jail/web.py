@@ -46,8 +46,9 @@ SEVERITY = {"ok": 0, "warn": 1, "fail": 2}
 
 
 def freshness_health(products, storage_error):
-    """The `health` object of /api/freshness, read by the project tracker (docs/CLOUD.md). Each product
-    is a part; the collection is the worse of the two population sources, and a storage failure warns."""
+    """The `health` object of /api/freshness, read by the project tracker
+    (docs/operations/monitoring-and-limits.md). Each product is a part; the collection is the
+    worse of the two population sources, and a storage failure warns."""
     checks = {}
     for name, product in products.items():
         detail = product["status"]

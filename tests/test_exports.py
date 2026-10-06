@@ -6,7 +6,7 @@ from test_courts import collect as collect_courts
 from test_courts import install_http as courts_http
 from test_details import collect, detail_html, install_http, seed_roster
 
-from sc_jail import iml_details
+from sc_jail import courts, iml_details
 from sc_jail.config import Config
 from sc_jail.exporters import export_courts, export_details
 from sc_jail.storage import LocalStore
@@ -61,3 +61,15 @@ def test_private_court_export_includes_source_metadata_and_exact_identifiers(tmp
     assert rows[0]["raw_sha256"] and rows[0]["first_captured_at"]
     assert not list(export_courts(store, case="123"))
     assert len(list(export_courts(store, all_versions=True))) == 1
+
+
+def test_all_versions_export_keeps_only_the_newest_parse_of_each_content(tmp_path, monkeypatch):
+    store = LocalStore(tmp_path)
+    courts_http(monkeypatch)
+    collect_courts(store)
+    monkeypatch.setattr(courts, "PARSER_VERSION", courts.PARSER_VERSION + 1)
+    collect_courts(store, NOW + timedelta(minutes=15))
+    assert len(store.keys("private/court-reports/")) == 2
+    rows = list(export_courts(store, all_versions=True))
+    assert len(rows) == 1
+    assert rows[0]["revision_key"].endswith(f"-v{courts.PARSER_VERSION}.json.gz")

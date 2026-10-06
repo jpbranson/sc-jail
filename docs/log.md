@@ -1,5 +1,14 @@
 # Knowledge bundle update log
 
+## 2026-10-06
+* **Creation**: Quarantined unreadable court-report rows after one unescaped quote kept the
+  court-report alert open: the [decision](decisions/2026-10-06-quarantine-unreadable-court-rows.md),
+  the [source-quality issue](source-quality/xfer-court-unescaped-quote.md), and updates to
+  [XFER court reports](sources/xfer-court-reports.md) and [exports](operations/exports.md).
+* **Update**: Recorded why freshness alerts recurred from October 2 to 6 in
+  [monitoring and limits](operations/monitoring-and-limits.md), and the latest rate of
+  [pagination shifts](source-quality/iml-pagination-shift.md).
+
 ## 2026-10-05
 * **Verification**: Checked every current-state concept against the live Google Cloud
   project (read-only), the code at `61a6e3a`, and the September 30 weekly analysis run; 101

@@ -80,7 +80,8 @@ Latest downloaded pending-hearing report ([XFER court reports](../sources/xfer-c
 
 Without `--family`, exports use the latest downloaded report per family.
 `--all-versions` includes every archived report version, including files no
-longer listed by the county. `--slot` instead selects the latest downloaded
+longer listed by the county; when a newer parser version has read the same content, only the
+newest parse is exported. `--slot` instead selects the latest downloaded
 report per family from the catalog as of a successful collection, rather than
 every file in that catalog. These two options are mutually exclusive. Rows include
 the source filename, modification time, first capture time, content hash, and

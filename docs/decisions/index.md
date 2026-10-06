@@ -1,3 +1,7 @@
+# 2026-10-06
+
+* [Quarantine unreadable court-report rows](2026-10-06-quarantine-unreadable-court-rows.md) - A court report with a few unreadable rows is parsed without them; more than 1% unreadable rows keeps the report unsupported and alerting.
+
 # 2026-10-04
 
 * [Accept IML roster rows with a blank permanent ID](2026-10-04-blank-permanent-id.md) - A roster row with a blank permanent ID is archived and counted as a booking but counts no one until IML assigns an ID.

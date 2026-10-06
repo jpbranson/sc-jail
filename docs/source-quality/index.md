@@ -1,7 +1,7 @@
 # IML roster
 
 * [07:00 UTC roster shrinks mid-scan](iml-0700-roster-shrinks.md) - The 07:00 UTC (2 a.m. Central) IML roster can fail completeness checks because its total falls during every attempt.
-* [Roster pagination shifts mid-scan](iml-pagination-shift.md) - The IML roster total often changes during a scan, shifting pagination, so the scan is rejected and retried (about 18 times a day).
+* [Roster pagination shifts mid-scan](iml-pagination-shift.md) - The IML roster total often changes during a scan, shifting pagination, so the scan is rejected and retried (about 25 to 40 times a day).
 * [Permanent person ID can change](iml-permanent-id-changes.md) - IML can reassign a booking's permanent person ID, so counts use the ID in effect at each moment.
 * [Booking listed with a blank permanent ID](iml-blank-permanent-id.md) - IML can list a booking before assigning its permanent ID; the row is archived and counted as a booking but as no person.
 * [Release date withdrawn and relisted](iml-release-date-relisted.md) - IML can withdraw a listed release date and list it again later, so the panel keeps every release-date change.
@@ -24,6 +24,7 @@
 
 # XFER court reports
 
+* [Unescaped quote in a court calendar row](xfer-court-unescaped-quote.md) - A county CSV court calendar can contain a row with an unescaped quote; the row is quarantined and the rest of the report is parsed.
 * [Empty dispositions folder](xfer-dispositions-empty.md) - The XFER dispositions folder has no files, so court outcomes are unavailable and bond status is not treated as a disposition.
 
 # IML compared with XFER

@@ -3,6 +3,7 @@
 import gzip
 import hashlib
 import json
+import re
 
 from .history import (
     MAX_CHAIN,
@@ -78,10 +79,15 @@ def report_inventory(store, *, slot=None, family=None, all_versions=False):
         if slot:
             raise ValueError("Choose either an observation slot or all report versions")
         prefix = "private/court-reports/" + (family + "/" if family else "")
+        # The same content re-parsed by a newer parser supersedes the older parse.
+        latest = {}
         for key in store.keys(prefix):
-            if key.endswith(".json.gz"):
-                revision, _ = read_json(store, key)
-                yield key, revision
+            match = re.fullmatch(r"(.+)-v(\d+)\.json\.gz", key)
+            if match and int(match.group(2)) > latest.get(match.group(1), (0, None))[0]:
+                latest[match.group(1)] = (int(match.group(2)), key)
+        for _, key in latest.values():
+            revision, _ = read_json(store, key)
+            yield key, revision
         return
     if slot:
         state = reconstruct_state(store, observation_key("xfer_courts", slot))

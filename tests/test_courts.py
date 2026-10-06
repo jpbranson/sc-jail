@@ -17,7 +17,7 @@ from sc_jail.storage import LocalStore, read_json
 NOW = datetime(2026, 9, 19, 8, tzinfo=timezone.utc)
 
 
-def csv_report(extra=False):
+def csv_report(extra=False, rows=1):
     out = io.StringIO(newline="")
     writer = csv.writer(out)
     writer.writerow(courts.CALENDAR_HEADERS)
@@ -31,7 +31,7 @@ def csv_report(extra=False):
         "00123",
         "Criminal",
     ]
-    writer.writerow(row)
+    writer.writerows([row] * rows)
     if extra:
         writer.writerow(courts.CALENDAR_HEADERS)
         writer.writerow(row)
@@ -44,6 +44,30 @@ def test_csv_reports_preserve_ids_duplicates_and_skip_repeated_headers():
     assert parsed["records"][0]["Case Number"] == "00123"
     for raw in (b"<html>error</html>", b"Wrong,Columns\n1,2", csv_report() + b"truncated,row\n"):
         with pytest.raises(SourceError):
+            courts.parse_report(raw, "gs_calendar")
+
+
+# A county row whose name field holds an unescaped quote, as in Calendar100626.csv.
+STRAY_QUOTE = b'"SYNTHETIC, PERSON "NICK","TEST","09/19/2026 09:00 AM","","T","D","00124","C"\r\n'
+
+
+def test_csv_reports_quarantine_a_few_unreadable_rows():
+    parsed = courts.parse_report(csv_report(rows=150) + STRAY_QUOTE, "gs_calendar")
+    assert len(parsed["records"]) == 150 and parsed["quarantined_rows"] == 1
+    assert "00124" not in {r["Case Number"] for r in parsed["records"]}
+    parsed = courts.parse_report(csv_report(rows=150) + b"truncated,row\r\n", "gs_calendar")
+    assert len(parsed["records"]) == 150 and parsed["quarantined_rows"] == 1
+    assert "quarantined_rows" not in courts.parse_report(csv_report(rows=150), "gs_calendar")
+
+
+def test_csv_reports_with_too_many_unreadable_rows_stay_unsupported():
+    for raw in (
+        csv_report(rows=150) + STRAY_QUOTE * 2,
+        csv_report(rows=20) + STRAY_QUOTE,
+        # An unclosed quote consumes every following line.
+        csv_report(rows=2) + b'"unclosed\r\n' + csv_report(rows=150),
+    ):
+        with pytest.raises(SourceError, match="too many unreadable rows"):
             courts.parse_report(raw, "gs_calendar")
 
 
@@ -89,9 +113,9 @@ def test_backfill_covers_each_family_before_older_reports():
     assert queue[0]["name"] == "Odyssey-JobOutput-3.txt"
 
 
-def install_http(monkeypatch, *, unsupported=False):
+def install_http(monkeypatch, *, unsupported=False, binary=None):
     calls = []
-    binary = b"new unsupported format" if unsupported else csv_report()
+    binary = binary or (b"new unsupported format" if unsupported else csv_report())
     name = "Odyssey-JobOutput-September 19, 2026.txt"
 
     class Session:
@@ -187,3 +211,25 @@ def test_court_retry_reuses_committed_manifest(tmp_path, monkeypatch):
     monkeypatch.setattr(store, "write", write)
     assert collect(store)["parsed_files"] == 1
     assert calls.count("Download") == 1
+
+
+def test_quarantined_rows_are_counted_without_marking_the_report_unsupported(
+    tmp_path, monkeypatch
+):
+    store = LocalStore(tmp_path)
+    install_http(monkeypatch, binary=csv_report(rows=150) + STRAY_QUOTE)
+    point = collect(store)
+    assert point["unsupported_files"] == 0 and point["parsed_files"] == 1
+    assert point["quarantined_rows"] == 1
+    revision, _ = read_json(store, store.keys("private/court-reports/")[0])
+    assert revision["status"] == "parsed"
+    assert revision["rows"] == 150 and revision["quarantined_rows"] == 1
+
+
+def test_a_new_parser_version_reparses_an_unchanged_report(tmp_path, monkeypatch):
+    store = LocalStore(tmp_path)
+    install_http(monkeypatch)
+    collect(store)
+    monkeypatch.setattr(courts, "PARSER_VERSION", courts.PARSER_VERSION + 1)
+    assert collect(store, NOW + timedelta(minutes=15))["changed"] == 1
+    assert len(store.keys("private/court-reports/")) == 2

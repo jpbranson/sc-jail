@@ -4,7 +4,7 @@ title: XFER court reports
 description: Public XFER court-calendar, indictment, pending-hearing, and dispositions folders, monitored each cycle with bounded downloads of new or changed files.
 resource: https://xfer.shelbycountytn.gov/
 tags: [xfer-courts, courts]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T01:54:59Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-06T20:45:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
 sources:
   - id: case-data-l47
@@ -46,7 +46,10 @@ in [case-data storage](../architecture/case-data-storage.md).
 Schemas for the four populated report families were checked against live
 files. CSV and XLS disposition reports with an unambiguous case-number header
 can be normalized if published. Unexpected filenames or layouts are retained
-as raw files with an explicit unsupported status. An HTML error page or truncated
+as raw files with an explicit unsupported status. A row that cannot be read, such as one
+with an [unescaped quote](../source-quality/xfer-court-unescaped-quote.md), is quarantined and
+the rest of the report is parsed, unless such rows exceed 1% of the report's data rows. An
+HTML error page or truncated
 download is a failure, never an empty court report. Empty valid calendars and an
 empty dispositions folder are legitimate source states.
 

@@ -3,7 +3,7 @@
 import os
 
 APPLICATION_VERSION = "0.2.0"
-PARSER_VERSIONS = {"iml": 1, "xfer": 2, "iml_details": 1, "xfer_courts": 1}
+PARSER_VERSIONS = {"iml": 1, "xfer": 2, "iml_details": 1, "xfer_courts": 2}
 REPEAT_CALCULATION_VERSION = 1
 
 

@@ -25,7 +25,11 @@ from .storage import archive_blob, encode, read_json, write_json
 from .xfer import URL, login, parse_listing
 
 CACHE_KEY = "private/checkpoints/xfer_courts.json.gz"
-PARSER_VERSION = 1
+PARSER_VERSION = 2
+# County exports occasionally contain a row with an unescaped quote. Such rows are left
+# out (the raw file keeps them); a report with more unreadable rows than this share of
+# its data rows stays unsupported, so a format change still alerts.
+MAX_QUARANTINED_SHARE = 0.01
 DIRECTORIES = (
     "/GS-Criminalcourtcalendar",
     "/CriminalCourtCalendar",
@@ -109,7 +113,7 @@ def _excel_values(book, sheet, index):
     return result
 
 
-def _normalize_rows(rows, expected=None):
+def _normalize_rows(rows, expected=None, quarantined=0):
     rows = [row for row in rows if any(str(v).strip() for v in row)]
     header_at = next(
         (
@@ -133,9 +137,31 @@ def _normalize_rows(rows, expected=None):
         if values == headers:
             continue
         if len(values) != len(names):
-            raise SourceError("Court report has a truncated or changed row")
+            quarantined += 1
+            continue
         records.append(dict(zip(names, values, strict=True)))
-    return {"columns": names, "records": records}
+    if quarantined > int((len(records) + quarantined) * MAX_QUARANTINED_SHARE):
+        raise SourceError("Court report has too many unreadable rows")
+    parsed = {"columns": names, "records": records}
+    if quarantined:
+        parsed["quarantined_rows"] = quarantined
+    return parsed
+
+
+def _read_csv(decoded):
+    """Rows of a CSV report and the number of physical lines in records that are not valid
+    CSV. The reader resumes at the next line after an error; an unclosed quote consumes
+    every following line, which the threshold in _normalize_rows then rejects."""
+    reader = csv.reader(io.StringIO(decoded, newline=""), strict=True)
+    rows, quarantined = [], 0
+    while True:
+        start = reader.line_num
+        try:
+            rows.append(next(reader))
+        except StopIteration:
+            return rows, quarantined
+        except csv.Error:
+            quarantined += reader.line_num - start
 
 
 def parse_report(content, family):
@@ -174,12 +200,9 @@ def parse_report(content, family):
         decoded = content.decode("utf-8-sig")
     except UnicodeDecodeError:
         decoded = content.decode("cp1252")
-    try:
-        rows = list(csv.reader(io.StringIO(decoded, newline=""), strict=True))
-    except csv.Error as exc:
-        raise SourceError("Court report is not valid CSV") from exc
+    rows, quarantined = _read_csv(decoded)
     expected = CALENDAR_HEADERS if family in {"gs_calendar", "criminal_calendar"} else None
-    return _normalize_rows(rows, expected)
+    return _normalize_rows(rows, expected, quarantined)
 
 
 def download(session, file):
@@ -316,8 +339,9 @@ def collect_courts(config, store, slot, *, deadline, now):
                     parsed = parse_report(raw, file["family"])
                     normalized = archive_blob(store, "court-records.json", encode(parsed))
                     status, reason, count = "parsed", None, len(parsed["records"])
+                    quarantined = parsed.get("quarantined_rows", 0)
                 except (SourceError, ValueError, UnicodeError) as exc:
-                    normalized, status, count = None, "unsupported", None
+                    normalized, status, count, quarantined = None, "unsupported", None, 0
                     reason = str(exc)[:200] if isinstance(exc, SourceError) else type(exc).__name__
                 path_id = hashlib.sha256(path.encode()).hexdigest()
                 revision_key = (
@@ -335,6 +359,7 @@ def collect_courts(config, store, slot, *, deadline, now):
                     "normalized": normalized,
                     "status": status,
                     "rows": count,
+                    "quarantined_rows": quarantined,
                     "error": reason,
                 }
                 write_json(store, revision_key, revision, create_only=True)
@@ -347,6 +372,7 @@ def collect_courts(config, store, slot, *, deadline, now):
                     "parser_version": PARSER_VERSION,
                     "status": status,
                     "rows": count,
+                    **({"quarantined_rows": quarantined} if quarantined else {}),
                 }
                 artifacts.append({"revision_key": revision_key, **reference})
                 changed += 1
@@ -374,6 +400,7 @@ def collect_courts(config, store, slot, *, deadline, now):
         "archived_files": sum("revision_key" in r for r in current.values()),
         "parsed_files": sum(r.get("status") == "parsed" for r in current.values()),
         "unsupported_files": sum(r.get("status") == "unsupported" for r in current.values()),
+        "quarantined_rows": sum(r.get("quarantined_rows", 0) for r in current.values()),
         "downloaded": downloads,
         "changed": changed,
         "pending": pending,

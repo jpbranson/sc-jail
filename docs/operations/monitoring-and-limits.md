@@ -3,13 +3,16 @@ type: Reference
 title: Monitoring and limits
 description: Health and freshness endpoints, uptime alerts, the tracker health object, retry behavior, collector time limits, and known alert patterns.
 tags: [monitoring, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:12:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-06T20:45:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: cloud-l467
     resource: https://github.com/jpbranson/sc-jail/blob/61a6e3a/docs/CLOUD.md?plain=1#L467-L524
     title: docs/CLOUD.md lines 467-524, before the OKF migration
     last_modified: 2026-09-27T21:06:44Z
+  - id: courts-parser
+    resource: ../../src/sc_jail/courts.py
+    title: Court report parser, version 2
 ---
 
 - `/health` checks the web process. `/api/status` reports source freshness.
@@ -54,10 +57,11 @@ sources:
   cutover it failed only on September 23. From the 0.2.0 release through September 26
   01:15 UTC, five roster slots were missed at scattered times, and the population alert
   (more than one checker failing for 15 minutes) fired once, for the September 23 07:00
-  slot. About 11 times a day an IML scan fails when
-  [pagination shifts](../source-quality/iml-pagination-shift.md) and Scheduler
-  retries it, so `/api/freshness` returns 503 for about five minutes until the retry
-  succeeds; these blips are too short to alert. The record-page alert fired twice on
+  slot. About 25 to 40 times a day an IML scan fails when
+  [pagination shifts](../source-quality/iml-pagination-shift.md) and Scheduler retries it, so
+  `/api/freshness` returns 503 for about five minutes until the retry succeeds; these blips are
+  too short to alert. When every attempt in a slot shifts, the slot is missed and the 503 can
+  last long enough to alert. The record-page alert fired twice on
   September 23 during the refresh backlog. No alert change was needed as of September 26.
   From then to October 5, 02:00 UTC, Monitoring recorded seven more population incidents
   (six lasting about ten minutes or less, and one opened at 05:37 UTC on October 4 during the
@@ -65,6 +69,22 @@ sources:
   incidents, one court-report incident, and two repeat-visit incidents. On October 5 that
   population incident and both repeat-visit incidents were still listed as open, although
   every freshness check returned HTTP 200.
+- From October 2 to October 6, 20:15 UTC, outside the October 4 outage, ten IML roster slots
+  were missed after retries (uptime-check results and collector failure records). Seven were
+  pagination shifts on every attempt. The population check met its 15-minute alert condition
+  from 21:32 and 22:17 UTC on October 5 and 07:07 UTC on October 6, each a run of shifted
+  scans. The other three missed slots (October 6, 19:30 to 20:00 UTC) were a county outage:
+  the IML site returned HTTP 404 for every attempt, and the check failed from 19:37 to
+  20:17 UTC, a genuine alert. The pagination retry behavior is unchanged.
+- Court-report health ignores a few unreadable rows. On October 6 the
+  `xfer_courts` check returned 503 from 10:22 UTC because one row of that day's General
+  Sessions calendar had an unescaped quote, which made the whole file
+  [unsupported](../source-quality/xfer-court-unescaped-quote.md). From court parser
+  version 2,[^courts-parser] rows that are not valid CSV or have the wrong number of fields
+  are quarantined: left out of the normalized records (the raw file keeps them) and
+  counted as `quarantined_rows` in `/api/coverage`, without changing health. A report with
+  more quarantined rows than 1% of its data rows (below 100 data rows, any quarantined row)
+  stays unsupported, so the check still returns 503 and alerts.
 - Cloud outages and source outages cannot be backfilled from a live current
   roster. Original observation times are always preserved.
 - A warm dashboard retains the last validated aggregate index during a storage
@@ -77,3 +97,5 @@ sources:
 - Each collection logs a structured `collection_summary` with source status,
   elapsed time, supplemental counts, and repeat-analysis watermark. Observations
   record application/parser versions and a source-content build identifier.
+
+[^courts-parser]: Court report parser, version 2

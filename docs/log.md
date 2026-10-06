@@ -1,6 +1,9 @@
 # Knowledge bundle update log
 
 ## 2026-10-06
+* **Update**: Recorded the [October 6 collector deployment](deployments/2026-10-06.md) and
+  updated [retained images](deployments/retained-images.md) and the
+  [cloud deployment](operations/cloud-deployment.md).
 * **Creation**: Quarantined unreadable court-report rows after one unescaped quote kept the
   court-report alert open: the [decision](decisions/2026-10-06-quarantine-unreadable-court-rows.md),
   the [source-quality issue](source-quality/xfer-court-unescaped-quote.md), and updates to

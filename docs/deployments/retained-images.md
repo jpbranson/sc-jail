@@ -1,9 +1,9 @@
 ---
 type: Reference
 title: Retained images and rollback
-description: Which container images remain available for rollback under the image cleanup policy, as recorded after the October 4 deployments.
+description: Which container images remain available for rollback under the image cleanup policy, as recorded after the October 6 collector deployment.
 tags: [deployment, cloud, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:12:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-06T22:10:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: cloud-l77
@@ -13,7 +13,15 @@ sources:
     author: claude-code/claude-opus-5-5
 ---
 
-For rollback, the image before the [October 4 fix](2026-10-04-1624.md) is the
+As of October 6, 2026, 20:50 UTC, the repository held four images: the
+[October 6 collector build](2026-10-06.md) (`9d502c1d…`, tagged `latest`), the October 4
+16:24 UTC build (`2276038d…`, untagged), the October 4 16:06 UTC build (`2c651baa…`,
+untagged), and the tagged September 23 image. The collector can roll back to `2276038d…`,
+which the dashboard still serves. That image is kept only because it is one of the two most
+recent; the next build makes it eligible for removal seven days after it was built (it is
+already older), so tag it or deploy the dashboard on a newer image before building again.
+
+Before October 6: for rollback, the image before the [October 4 fix](2026-10-04-1624.md) is the
 [September 28 build](2026-09-28.md) (`sha256:144ed915…`), but it rejects the roster
 while a blank permanent ID is listed. The cleanup policy keeps only the two most recent
 images (now both October 4 builds) and removes other untagged images seven days after

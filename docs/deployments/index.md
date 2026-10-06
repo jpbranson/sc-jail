@@ -1,7 +1,8 @@
 # Current
 
-* [October 4, 16:24 UTC deployment](2026-10-04-1624.md) - Image from commit 5ced56f that accepts IML roster rows with a blank permanent ID; the current deployment as of October 4, 2026.
-* [Retained images and rollback](retained-images.md) - Which container images remain available for rollback under the image cleanup policy, as recorded after the October 4 deployments.
+* [October 6 collector deployment](2026-10-06.md) - Collector-only update from commit dad628b that quarantines unreadable court-report rows; the current collector deployment as of October 6, 2026.
+* [October 4, 16:24 UTC deployment](2026-10-04-1624.md) - Image from commit 5ced56f that accepts IML roster rows with a blank permanent ID; the dashboard still serves it after the October 6 collector update.
+* [Retained images and rollback](retained-images.md) - Which container images remain available for rollback under the image cleanup policy, as recorded after the October 6 collector deployment.
 
 # Superseded
 

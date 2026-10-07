@@ -1,5 +1,12 @@
 # Knowledge bundle update log
 
+## 2026-10-07
+* **Update**: Recorded the [General Sessions Sentenced evidence review](source-quality/iml-details-sentenced-meaning.md#october-7-investigation),
+  official process sources, missing original case identifiers, and the court-portal access
+  block. Added a dated September 25 sensitivity calculation and six-booking review protocol.
+  The [question](questions/sentenced-meaning.md) remains open; no matched case history was
+  retrieved and no classification, report template, or published definition changed.
+
 ## 2026-10-06
 * **Creation**: Quarantined unreadable court-report rows after one unescaped quote kept the
   court-report alert open: the [decision](decisions/2026-10-06-quarantine-unreadable-court-rows.md),

@@ -1,5 +1,11 @@
 # Knowledge bundle update log
 
+## 2026-10-15
+* **Creation**: Recorded the October 15 IML outage, which ended with the county server
+  answering every request with a stack trace and HTTP 200, and the clearer error it now produces:
+  the [source-quality issue](source-quality/iml-server-error-page.md) and an update to
+  [monitoring and limits](operations/monitoring-and-limits.md).
+
 ## 2026-10-06
 * **Creation**: Quarantined unreadable court-report rows after one unescaped quote kept the
   court-report alert open: the [decision](decisions/2026-10-06-quarantine-unreadable-court-rows.md),

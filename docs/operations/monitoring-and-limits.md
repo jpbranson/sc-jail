@@ -3,7 +3,7 @@ type: Reference
 title: Monitoring and limits
 description: Health and freshness endpoints, uptime alerts, the tracker health object, retry behavior, collector time limits, and known alert patterns.
 tags: [monitoring, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-06T20:45:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:20:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: cloud-l467
@@ -76,6 +76,11 @@ sources:
   scans. The other three missed slots (October 6, 19:30 to 20:00 UTC) were a county outage:
   the IML site returned HTTP 404 for every attempt, and the check failed from 19:37 to
   20:17 UTC, a genuine alert. The pagination retry behavior is unchanged.
+- On October 15 eight IML roster slots (14:15 to 16:00 UTC) were missed: two pagination
+  shifts, then read timeouts from 14:29 to 16:03 UTC, then, from 16:00 to 16:09 UTC, a Java
+  stack trace served with HTTP 200. The 16:15 slot succeeded. Such pages are now reported as
+  "IML server error (<exception class>)" rather than a possible layout change
+  ([source-quality issue](../source-quality/iml-server-error-page.md)).
 - Court-report health ignores a few unreadable rows. On October 6 the
   `xfer_courts` check returned 503 from 10:22 UTC because one row of that day's General
   Sessions calendar had an unescaped quote, which made the whole file

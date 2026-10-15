@@ -3,7 +3,7 @@ type: Reference
 title: Archive layout and meaning
 description: The data/ (or bucket) layout of public index, private checkpoints, observations, blobs, court reports, analytics, repairs, and failure records, and what it retains.
 tags: [storage, privacy, provenance]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T01:54:59Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
 sources:
   - id: readme-l157
@@ -26,13 +26,15 @@ sources:
 data/
   public/index.json                 # aggregate dashboard index, latest 90 days
   private/checkpoints/*.json.gz     # latest normalized state and cumulative seen IDs
-  private/observations/...          # daily checkpoints + quarter-hour change logs
+  private/observations/...          # quarter-hour manifests: change logs, checkpoint references
   private/blobs/...                 # compressed originals and checkpoint data
   private/legacy/observations/...   # original manifests retained during migration
-  private/court-reports/...         # immutable raw/normalized court report versions
+  private/court-reports/...         # immutable court-report revision manifests (bytes in blobs)
   private/analytics/...             # repeat-visit registry and resumable progress
   private/repairs/...               # backups before derived-data corrections
   private/failures/...              # durable failed-attempt records
+  private/maintenance/...           # repair markers that pause affected collection
+  private/collector-lease.json      # distributed collector lease (not backed up)
 ```
 
 # Observations

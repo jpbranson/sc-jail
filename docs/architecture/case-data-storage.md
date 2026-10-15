@@ -3,7 +3,7 @@ type: Storage Format
 title: Case-data storage
 description: IML detail HTML is kept only on semantic changes and court reports once per content version, both with daily checkpoints and change logs.
 tags: [storage, iml-details, xfer-courts]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T01:54:59Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
 sources:
   - id: case-data-l80
@@ -30,10 +30,13 @@ last valid record. Images, including photographs, are not downloaded.
 
 For [courts](../sources/xfer-court-reports.md), each downloaded content version gets one
 compressed raw file, one compressed normalized table when supported, and a small provenance
-manifest. SHA-256 addresses reuse identical bytes, including across filenames. Unchanged
-periodic verification updates only retrieval metadata. Current listings form a
-bounded working catalog; older report versions remain under
-`private/court-reports/` even after the county removes their filenames.
+manifest per content version and parser version; a new parser version re-parses unchanged
+content into a new manifest and table. SHA-256 addresses reuse identical bytes, including
+across filenames. Unchanged periodic verification under the same parser updates only retrieval
+metadata. Unreadable CSV rows are counted as `quarantined_rows`. Current listings form a
+bounded working catalog; older report versions remain (manifests under
+`private/court-reports/`, bytes in `private/blobs/`) even after the county removes their
+filenames.
 
 # Retention
 

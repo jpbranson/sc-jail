@@ -1,6 +1,24 @@
 # Knowledge bundle update log
 
 ## 2026-10-15
+* **Verification**: Checked the bundle against the code at `b80fab0`, the live Google Cloud
+  project (read-only), collector logs, and Monitoring. Corrected the
+  [07:00 UTC roster](source-quality/iml-0700-roster-shrinks.md) (missed again October 9, 11, 12,
+  and 13), the [pagination-shift](source-quality/iml-pagination-shift.md) rate, the
+  [blank permanent ID](source-quality/iml-blank-permanent-id.md) evidence (and removed a booking
+  number from it), alert history in [monitoring and limits](operations/monitoring-and-limits.md),
+  court-report storage in [archive layout](architecture/archive-layout.md) and
+  [case-data storage](architecture/case-data-storage.md),
+  [storage growth](architecture/storage-growth.md), the
+  [weekly run](analysis/weekly-run.md) (October runs not recorded here),
+  [population profile](analysis/population-profile.md) wording, the narrowed
+  [XFER scope decision](decisions/2026-09-19-xfer-jail-report-scope.md), and workspace-specific
+  paths in [deployment](operations/deploy.md) and [local setup](operations/local-setup.md).
+  Analysis numbers from the September 30 run could not be re-derived on this machine.
+* **Update**: Recorded the [October 15 deployment](deployments/2026-10-15.md), the first from
+  macOS, and reconstructed the unrecorded [October 6 collector update](deployments/2026-10-06.md)
+  from Cloud Run, Cloud Build, and audit logs; updated [retained images](deployments/retained-images.md),
+  [cloud deployment](operations/cloud-deployment.md), and [deployment](operations/deploy.md).
 * **Creation**: Recorded the October 15 IML outage, which ended with the county server
   answering every request with a stack trace and HTTP 200, and the clearer error it now produces:
   the [source-quality issue](source-quality/iml-server-error-page.md) and an update to

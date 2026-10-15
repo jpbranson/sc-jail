@@ -4,7 +4,7 @@ title: Booking panel
 description: Private one-row-per-booking history replayed from every committed IML roster and detail observation and validated against every archived population.
 resource: ../../scripts/build_panel.py
 tags: [analysis, iml, iml-details, privacy]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: analysis-l86
@@ -69,5 +69,5 @@ Each row contains:
 Latest weekly run (September 30, 2026): 4,174 bookings from 1,025 roster observations, and
 every archived population matched; 182 bookings had changed permanent ID. 53 roster slots
 were missed, 9 of them after the cutover, and the 07:00 UTC slot had not failed since
-September 23 (it failed on September 20, 21, and 23; see the
-[source-quality entry](../source-quality/iml-0700-roster-shrinks.md)).
+September 23 (it failed on September 20, 21, and 23, and again on October 9, 11, 12, and 13;
+see the [source-quality entry](../source-quality/iml-0700-roster-shrinks.md)).

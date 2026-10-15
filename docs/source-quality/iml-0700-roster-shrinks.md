@@ -1,11 +1,11 @@
 ---
 type: Source Quality Issue
 title: 07:00 UTC roster shrinks mid-scan
-description: The 07:00 UTC (2 a.m. Central) IML roster can fail completeness checks because its total falls during every attempt.
+description: The 07:00 UTC (2 a.m. Central) IML roster often fails completeness checks because its total falls during every attempt.
 tags: [iml, population, data-quality]
 affects: IML roster
 first_seen: 2026-09-20
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: source-quality-l11
@@ -17,12 +17,17 @@ sources:
 
 # Issue
 
-The 07:00 UTC (2 a.m. Central) roster fails completeness checks because its total falls during
-every attempt, apparently while released records are purged.
+The 07:00 UTC (2 a.m. Central) roster often fails completeness checks because its total falls
+during every attempt, apparently while released records are purged.
 
 # Latest evidence
 
-Failed Sept 20, 21, and 23 only: the Sept 30 panel and collector logs show no 07:00 failure
+Oct 7 to 15: the 07:00 slot was missed on Oct 9, 11, 12, and 13, with every attempt rejected;
+on Oct 11 to 13 the total fell by one record between pages in each attempt. It succeeded on
+Oct 7, 8, 14, and 15, and on Oct 10 at its third attempt. The 07:15 slot was also missed on
+Oct 9 (collector `collection_summary` logs).
+
+Earlier, it failed Sept 20, 21, and 23 only: the Sept 30 panel and collector logs show no 07:00 failure
 from Sept 24 to Oct 5, apart from Oct 4, when every scan from 05:22 to 16:15 UTC was rejected
 for an unrelated [blank permanent ID](iml-blank-permanent-id.md). The 07:15 slot succeeded
 each time the 07:00 slot failed. It

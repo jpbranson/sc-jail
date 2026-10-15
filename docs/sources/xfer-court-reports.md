@@ -5,7 +5,7 @@ description: Public XFER court-calendar, indictment, pending-hearing, and dispos
 resource: https://xfer.shelbycountytn.gov/
 tags: [xfer-courts, courts]
 generated: { by: claude-code/claude-opus-5-5, at: 2026-10-06T20:45:00Z }
-verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
+verified: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 sources:
   - id: case-data-l47
     resource: https://github.com/jpbranson/sc-jail/blob/61a6e3a/docs/CASE_DATA.md?plain=1#L47-L78

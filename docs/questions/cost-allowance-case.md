@@ -4,7 +4,7 @@ title: "Which case applies to the $5 target: $0.52 or $5.38 a month?"
 description: Measured usage projects $0.52 a month if this project receives the billing account's free allowances and $5.38 if other projects use them first.
 tags: [cost, cloud]
 raised: 2026-09-26
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:15:07Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: flight-log-l45
@@ -27,4 +27,4 @@ this cannot be read by CLI.
 If the allowances are shared, see [how the project could get under $5](./cost-lever.md).
 
 The [September 30 weekly measurement](../cost/measured-usage-2026-09-30.md) projects $0.51 and
-$5.44 a month for the same two cases; as of October 5, 2026, the question is still open.
+$5.44 a month for the same two cases; as of October 15, 2026, the question is still open.

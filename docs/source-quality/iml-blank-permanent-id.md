@@ -5,7 +5,7 @@ description: IML can list a booking before assigning its permanent ID; the row i
 tags: [iml, population, data-quality]
 affects: IML roster
 first_seen: 2026-10-04
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: source-quality-l13
@@ -21,12 +21,13 @@ A booking can be listed with a blank permanent ID.
 
 # Latest evidence
 
-Booking 26116828 appeared about 05:15 UTC with no permanent ID and a same-day release date; the
+One booking appeared about 05:15 UTC with no permanent ID and a same-day release date; the
 strict parser rejected every IML scan from 05:22 UTC until [the fix
 deployed](../deployments/2026-10-04-1606.md); the 16:15 UTC slot succeeded.
 [Record-page](../sources/iml-record-pages.md) collection was stopped for the same period.
-After the fix, the collector logged one booking without a permanent ID in each of 40 IML scans
-from Oct 4 16:16 to Oct 5 02:01 UTC while collection stayed healthy.
+After the fix, the collector logged one booking without a permanent ID in 237 warnings from
+Oct 4 16:16 to Oct 7 05:02 UTC while collection stayed healthy, and none since (collector
+logs to Oct 15).
 
 # Handling
 

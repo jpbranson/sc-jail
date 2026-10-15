@@ -4,7 +4,7 @@ title: Maintaining the knowledge bundle
 description: How to add and update concepts in this OKF v0.2 bundle, including decisions, source-quality issues, deployments, trust, and lifecycle fields.
 resource: ../scripts/check_knowledge.py
 tags: [provenance]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
 sources:
   - id: okf-spec
@@ -99,6 +99,9 @@ consistent with [keeping person-level source files private](decisions/2026-09-19
 .\.venv\Scripts\python.exe scripts\check_knowledge.py
 .\.venv\Scripts\python.exe scripts\check_knowledge.py --entries docs\decisions
 ```
+
+On macOS or Linux, run `python scripts/check_knowledge.py` from an environment with the
+development dependencies.
 
 The first command checks OKF conformance, field formats, index entries, footnotes, and
 relative links. The second prints the index entries for one directory from its concepts'

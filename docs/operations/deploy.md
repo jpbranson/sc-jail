@@ -4,7 +4,7 @@ title: Owner setup and deployment
 description: How to deploy or update sc-jail with scripts/deploy_gcp.py, including dry runs, deferred Scheduler activation, image rollback, and post-deploy checks.
 resource: ../../scripts/deploy_gcp.py
 tags: [cloud, deployment, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:12:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:45:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: cloud-l271
@@ -14,8 +14,8 @@ sources:
 ---
 
 For a new environment, Google Cloud sign-in and an existing billing account are
-required. The code does not create a billing account. This workspace has a
-portable CLI at `.runtime/google-cloud-sdk/bin/gcloud.cmd`. From the repository
+required. The code does not create a billing account. The owner's Windows
+workspace has a portable CLI at `.runtime/google-cloud-sdk/bin/gcloud.cmd`. From the repository
 root, add it to the current PowerShell process's PATH:
 
 ```powershell
@@ -25,6 +25,10 @@ $env:PATH = (Join-Path (Get-Location) '.runtime\google-cloud-sdk\bin') + [IO.Pat
 As of October 5, 2026, this machine also has a newer Google Cloud CLI (installed with winget
 on October 4) at `%LOCALAPPDATA%\Google\Cloud SDK\google-cloud-sdk\bin`, which may not be on
 PATH; prepend either `bin` directory the same way before running `scripts/deploy_gcp.py`.
+On October 15, 2026 the owner's Mac got Google Cloud CLI 589.0.0 from Homebrew
+(`brew install --cask gcloud-cli`, at `/opt/homebrew/bin/gcloud`), and the
+[October 15 deployment](../deployments/2026-10-15.md) ran from there with `python` in place
+of the PowerShell paths below.
 
 The examples use the project's installed virtual environment. On a new machine,
 first follow [local dependency setup](local-setup.md), stopping before

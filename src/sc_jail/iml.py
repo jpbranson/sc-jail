@@ -20,6 +20,11 @@ def parse_page(html):
     text = soup.get_text(" ", strip=True)
     match = re.search(r"Showing\s+([\d,]+)\s+to\s+([\d,]+)\s+of\s+([\d,]+)\s+results", text, re.I)
     if not match:
+        # The county's server faults arrive as HTTP 200 stack traces. Only the exception class is
+        # reported, because the error text is shown on the public dashboard.
+        if "An abnormal error occur" in text:
+            kind = re.search(r"\b((?:[a-z]\w*\.)+[A-Z]\w*(?:Exception|Error))\b", text)
+            raise SourceError(f"IML server error ({kind.group(1) if kind else 'unknown'})")
         raise SourceError("IML result range missing; possible login, error, or layout change")
     start, end, total = (int(x.replace(",", "")) for x in match.groups())
     if total < 1 or total > 50_000 or not 1 <= start <= end <= total:

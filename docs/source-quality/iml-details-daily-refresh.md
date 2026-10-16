@@ -5,7 +5,7 @@ description: IML record pages are refreshed about daily, so a detail change is d
 tags: [iml-details, data-quality]
 affects: IML details
 first_seen: 2026-09-19
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: source-quality-l17
@@ -23,7 +23,8 @@ change](../deployments/2026-09-23-detail-refresh-fix.md) kept detail freshness f
 
 # Latest evidence
 
-3,291 of 3,291 eligible pages fresh at 01:47 UTC Oct 5 (oldest check Oct 4 05:47 UTC), after
+3,267 of 3,267 eligible pages fresh at 16:48 UTC Oct 15 (oldest check Oct 14 19:19 UTC;
+live `/api/coverage`). 3,291 of 3,291 were fresh at 01:47 UTC Oct 5 (oldest check Oct 4 05:47 UTC), after
 the backlog from the Oct 4 [blank permanent ID](iml-blank-permanent-id.md) outage cleared
 (live `/api/coverage`). 3,308 of 3,308 were fresh at 00:05 UTC Sept 26.
 

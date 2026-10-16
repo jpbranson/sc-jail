@@ -3,7 +3,7 @@ type: Reference
 title: Retention and storage growth
 description: All raw roster HTML and jail XLS stay archived with deduplication; raw originals remain the largest part of archive growth.
 tags: [storage, cost]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T01:54:59Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
 sources:
   - id: storage-l121
@@ -19,9 +19,11 @@ daily verification. Both expansions reuse the checkpoint/change-log format.
 See [case-data storage](case-data-storage.md) for the precise policies.
 
 The [normalized history](normalized-history.md) optimization reduces normalized-history and
-manifest growth. Raw originals remain the largest component, so it does not promise a
-comparable reduction in total archive size. Daily checkpoints add roughly one compressed
+manifest growth. Raw originals remain the largest live component, so it does not promise a
+comparable reduction in total archive size. Overwritten mutable objects (the index and
+current-state checkpoints) are kept seven days as soft-deleted bytes, which were the largest
+part of billable storage on September 30. Daily checkpoints add roughly one compressed
 normalized state per source per day; change-log size depends on actual record changes.
 The current-state cache has a roughly fixed size, apart from cumulative seen IDs.
 
-Measured growth is recorded in [measured usage and cost](../cost/measured-usage-2026-09-26.md).
+Measured growth is recorded in [measured usage and cost](../cost/measured-usage-2026-09-30.md).

@@ -4,7 +4,7 @@ title: Local setup
 description: Install the locked dependencies and start a local collector and dashboard against a separate development archive, with optional tunnel and restart task.
 resource: ../../scripts/start-local.ps1
 tags: [local, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T01:54:59Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
 sources:
   - id: readme-l62
@@ -38,7 +38,7 @@ The archive variables are described in [configuration](../architecture/configura
 # Temporary tunnel
 
 Omit `-NoTunnel` to also start a temporary public tunnel when
-`.runtime/cloudflared.exe` is present. This workspace already has the binary.
+`.runtime/cloudflared.exe` is present. The owner's Windows workspace already has the binary.
 On a new machine, install `cloudflared` from its official release and put the
 executable there, or run a tunnel separately:
 

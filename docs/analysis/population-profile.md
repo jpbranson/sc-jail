@@ -4,7 +4,7 @@ title: Population profile
 description: Aggregate profile of who the IML roster lists as held on one day, with definitions and first results from September 23, 2026.
 resource: ../../scripts/profile_population.py
 tags: [analysis, population, privacy]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: analysis-l16
@@ -58,7 +58,8 @@ a point-in-time copy, not a backup; the independent [cloud backup](../operations
   for every such person.
 - **Daily movement:** booking numbers first seen that Central day, and bookings with
   that listed release date, from the [repeat-visit registry](../architecture/repeat-visit-registry.md). Bookings present in the
-  first observation, and the partial first and last days, are excluded. Missed
+  first observation are not counted as first seen, and the partial first and last days
+  are excluded. Missed
   collection slots delay when a booking is seen but do not drop it; very short stays
   between collections can be missed.
 

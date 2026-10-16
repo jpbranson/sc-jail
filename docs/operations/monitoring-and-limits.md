@@ -3,7 +3,7 @@ type: Reference
 title: Monitoring and limits
 description: Health and freshness endpoints, uptime alerts, the tracker health object, retry behavior, collector time limits, and known alert patterns.
 tags: [monitoring, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-06T20:45:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: cloud-l467
@@ -54,10 +54,10 @@ sources:
   and 23 as the roster total fell during every attempt, apparently while released
   records were purged ([source-quality issue](../source-quality/iml-0700-roster-shrinks.md));
   the 07:15 slot succeeded each time. It is not nightly: after the
-  cutover it failed only on September 23. From the 0.2.0 release through September 26
+  cutover it failed on September 23, then on October 9, 11, 12, and 13. From the 0.2.0 release through September 26
   01:15 UTC, five roster slots were missed at scattered times, and the population alert
   (more than one checker failing for 15 minutes) fired once, for the September 23 07:00
-  slot. About 25 to 40 times a day an IML scan fails when
+  slot. About 20 to 50 times a day an IML scan fails when
   [pagination shifts](../source-quality/iml-pagination-shift.md) and Scheduler retries it, so
   `/api/freshness` returns 503 for about five minutes until the retry succeeds; these blips are
   too short to alert. When every attempt in a slot shifts, the slot is missed and the 503 can
@@ -68,7 +68,7 @@ sources:
   [blank permanent ID](../source-quality/iml-blank-permanent-id.md) outage), four record-page
   incidents, one court-report incident, and two repeat-visit incidents. On October 5 that
   population incident and both repeat-visit incidents were still listed as open, although
-  every freshness check returned HTTP 200.
+  every freshness check returned HTTP 200; by October 15 no incident was open.
 - From October 2 to October 6, 20:15 UTC, outside the October 4 outage, ten IML roster slots
   were missed after retries (uptime-check results and collector failure records). Seven were
   pagination shifts on every attempt. The population check met its 15-minute alert condition
@@ -76,6 +76,18 @@ sources:
   scans. The other three missed slots (October 6, 19:30 to 20:00 UTC) were a county outage:
   the IML site returned HTTP 404 for every attempt, and the check failed from 19:37 to
   20:17 UTC, a genuine alert. The pagination retry behavior is unchanged.
+- On October 15 eight IML roster slots (14:15 to 16:00 UTC) were missed: two pagination
+  shifts, then read timeouts from 14:29 to 16:03 UTC, then, from 16:00 to 16:09 UTC, a Java
+  stack trace served with HTTP 200. The 16:15 slot succeeded. Such pages are now reported as
+  "IML server error (<exception class>)" rather than a possible layout change
+  ([source-quality issue](../source-quality/iml-server-error-page.md)). The outage opened a
+  population incident (14:39 to 16:24 UTC) and record-page and repeat-visit incidents (15:22
+  and 15:20 to 16:26 UTC).
+- From October 6, 20:15 UTC to October 15, 16:50 UTC, Monitoring recorded 34 incidents, all
+  closed: 28 population (one to six a day from October 8, nearly all runs of shifted scans or
+  a missed 07:00 slot), three record-page (October 9, 14, and 15), two court-report (October
+  7 and 8), and one repeat-visit (October 15). From October 8 to 14, 35 roster slots were
+  missed after retries ([pagination shifts](../source-quality/iml-pagination-shift.md)).
 - Court-report health ignores a few unreadable rows. On October 6 the
   `xfer_courts` check returned 503 from 10:22 UTC because one row of that day's General
   Sessions calendar had an unescaped quote, which made the whole file

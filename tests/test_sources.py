@@ -45,6 +45,23 @@ def test_iml_rejects_error_partial_or_changed_dates(html):
         iml.parse_page(html)
 
 
+@pytest.mark.parametrize(
+    ("trace", "kind"),
+    [
+        ("org.hibernate.SessionException: Session is closed!\n\tat org.hibernate.internal."
+         "AbstractSessionImpl.errorIfClosed(AbstractSessionImpl.java:133)",
+         "org.hibernate.SessionException"),
+        ("Unreadable fault", "unknown"),
+    ],
+)
+def test_iml_server_error_names_only_the_exception_class(trace, kind):
+    html = ("An abnormal error occured, and the error page could not be displayed.<br>\n"
+            f"Please give the following information to tech support:<br>\n<pre>{trace}</pre>")
+    with pytest.raises(SourceError) as raised:
+        iml.parse_page(html)
+    assert str(raised.value) == f"IML server error ({kind})"
+
+
 def test_iml_booking_without_permanent_id_is_kept_but_counts_no_one():
     _, _, _, records = iml.parse_page(page(1, 1, [1], release="09/19/2026", person=""))
     assert records[0]["booking_number"] == "BK1" and records[0]["permanent_id"] == ""

@@ -4,7 +4,7 @@ title: Weekly analysis run
 description: Local weekly job that refreshes the archive mirror and rebuilds every analysis product into a dated folder, run by the SC-Jail-Weekly-Analysis task.
 resource: ../../scripts/weekly_analysis.py
 tags: [analysis, local, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: analysis-l139
@@ -42,7 +42,7 @@ $env:PATH = "$PWD\.runtime\google-cloud-sdk\bin;$env:PATH"
 The `SC-Jail-Weekly-Analysis` Windows task
 ([decision](../decisions/2026-09-26-weekly-local-analysis.md)) runs this on Wednesdays at 09:00 through
 `scripts/run-weekly-analysis.ps1`, which adds the bundled gcloud CLI to `PATH` and
-appends one line per run to `.runtime/weekly-analysis.log` (full output in
+appends a start line and an exit line per run to `.runtime/weekly-analysis.log` (full output in
 `weekly-analysis.out.log` and `.err.log`). The task runs only while the owner is signed
 in, stores no password, and starts at the next opportunity if a run was missed. Install
 or update it with `scripts\install-weekly-task.ps1`; remove it with
@@ -55,5 +55,6 @@ preliminary. Collection began on September 19, 2026, so readouts become availabl
 after October 17 (bond, court timing), October 19 (length of stay), and December 18
 (re-booking). Reconciliation and court match rates are usable now.
 
-Latest weekly run (September 30, 2026): all ten steps were ok in about 14 minutes (the panel
-took 647 seconds), with no readout ready yet; the task's next run is October 7.
+Latest weekly run recorded here (September 30, 2026): all ten steps were ok in about 14 minutes
+(the panel took 647 seconds), with no readout ready yet. The October 7 and 14 runs, if any, are
+not recorded; their output is only on the owner's Windows machine.

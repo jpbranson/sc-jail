@@ -1,11 +1,12 @@
 # IML roster
 
-* [07:00 UTC roster shrinks mid-scan](iml-0700-roster-shrinks.md) - The 07:00 UTC (2 a.m. Central) IML roster can fail completeness checks because its total falls during every attempt.
-* [Roster pagination shifts mid-scan](iml-pagination-shift.md) - The IML roster total often changes during a scan, shifting pagination, so the scan is rejected and retried (about 25 to 40 times a day).
+* [07:00 UTC roster shrinks mid-scan](iml-0700-roster-shrinks.md) - The 07:00 UTC (2 a.m. Central) IML roster often fails completeness checks because its total falls during every attempt.
+* [Roster pagination shifts mid-scan](iml-pagination-shift.md) - The IML roster total often changes during a scan, shifting pagination, so the scan is rejected and retried (about 20 to 50 times a day).
 * [Permanent person ID can change](iml-permanent-id-changes.md) - IML can reassign a booking's permanent person ID, so counts use the ID in effect at each moment.
 * [Booking listed with a blank permanent ID](iml-blank-permanent-id.md) - IML can list a booking before assigning its permanent ID; the row is archived and counted as a booking but as no person.
 * [Release date withdrawn and relisted](iml-release-date-relisted.md) - IML can withdraw a listed release date and list it again later, so the panel keeps every release-date change.
 * [Roster lists recently released bookings](iml-lists-recent-releases.md) - The IML roster also lists recently released bookings with their release date, so the population counts only blank or future release dates.
+* [Server error page served as HTTP 200](iml-server-error-page.md) - The IML server can answer every request with a Java stack trace and HTTP 200; the scan is rejected and reported as an IML server error naming only the exception class.
 * [Missed roster slots before the cloud cutover](iml-local-missed-slots.md) - Before the September 22 cloud cutover, local collection missed roughly one IML roster slot in five.
 
 # IML record pages

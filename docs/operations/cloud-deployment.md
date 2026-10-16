@@ -4,8 +4,8 @@ title: Google Cloud deployment
 description: The live sc-jail deployment in sc-jail-research-20260922 (us-central1), with its services, archive, backup, Scheduler, monitoring, budget, and identities.
 resource: https://console.cloud.google.com/home/dashboard?project=sc-jail-research-20260922
 tags: [cloud, deployment, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-06T22:10:00Z }
-verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
+verified: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 sources:
   - id: cloud-l1
     resource: https://github.com/jpbranson/sc-jail/blob/61a6e3a/docs/CLOUD.md?plain=1#L1-L9
@@ -27,16 +27,15 @@ sources:
 
 # Current deployment
 
-As of September 23, 2026 UTC, the collectors and dashboard are deployed to Google
+The collectors and dashboard are deployed to Google
 Cloud in `us-central1`. Initially deployed September 22, 2026; updated to 0.2.0 on
-September 23 UTC and redeployed on September 26, 27, and 28 and twice on October 4; the
-collector alone was updated on October 6.
+September 23 UTC and redeployed on September 26, 27, and 28, twice on October 4, and on
+October 15; the collector alone was also updated on October 6.
 The live service configuration, Scheduler, backup settings, and public endpoints were
-rechecked on September 23 and October 4. See the
+rechecked on September 23, October 4, and October 15. See the
 [0.2.0 release record](../deployments/2026-09-23-release-0-2-0.md) for that release's
-validation. The current collector deployment record is
-[October 6](../deployments/2026-10-06.md); the dashboard still serves the
-[October 4, 16:24 UTC](../deployments/2026-10-04-1624.md) image. Every deployment is listed
+validation. The current deployment record is
+[October 15](../deployments/2026-10-15.md); every deployment is listed
 in [deployments](../deployments/index.md).
 
 # Resources
@@ -57,7 +56,7 @@ in [deployments](../deployments/index.md).
 - Monthly budget: $5 since September 26, 2026 (was $15), matching the
   [owner's target](../decisions/2026-09-26-under-5-dollars.md) of under $5 a month, with
   actual-spend alerts at 50%, 90%, and 100%, and a forecast alert at 100%. The budget
-  does not cap spending. See [measured usage and cost](../cost/measured-usage-2026-09-26.md).
+  does not cap spending. See [measured usage and cost](../cost/measured-usage-2026-09-30.md).
 
 # Identities and access
 

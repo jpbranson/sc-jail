@@ -5,7 +5,7 @@ description: The XFER dispositions folder has no files, so court outcomes are un
 tags: [xfer-courts, courts, data-quality]
 affects: XFER courts
 first_seen: 2026-09-19
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: source-quality-l23
@@ -21,8 +21,8 @@ The [dispositions folder](../sources/xfer-court-reports.md) has no files.
 
 # Latest evidence
 
-Still empty at the Oct 5 01:45 UTC collection, when the other three folders listed 34 files
-(live `/api/coverage`); also empty on Sept 26 at 00:15 UTC, when they listed 36.
+Still empty on Oct 15 at 16:48 UTC, when the other three folders listed 39 files (live
+`/api/coverage`); also empty on Oct 5 at 01:45 UTC, when they listed 34, and on Sept 26 at 00:15 UTC, when they listed 36.
 
 # Handling
 

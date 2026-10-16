@@ -3,7 +3,7 @@ type: Reference
 title: Retained images and rollback
 description: Which container images remain available for rollback under the image cleanup policy, as recorded after the October 15 deployment.
 tags: [deployment, cloud, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
+generated: { by: claude-code/claude-fable-5-1, at: 2026-10-15T20:30:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 sources:
   - id: cloud-l77
@@ -15,10 +15,10 @@ sources:
 
 For rollback, the image before the [October 15 deployment](2026-10-15.md) is the
 [October 6 collector build](2026-10-06.md)
-(`sha256:9d502c1d69a68f09a4379df99484f72a434bfa9cbde95b4d9f7f4b7e3d776166`). If it was
-built from commit `0249372`, as is most likely, it differs from the current image only in
-reporting the county's IML error page as a possible layout change, and its dashboard code
-differs from the October 4 image only by a docstring, so it can serve both services.
+(`sha256:9d502c1d69a68f09a4379df99484f72a434bfa9cbde95b4d9f7f4b7e3d776166`). It was built
+from commit `dad628b`, so it differs from the current image only in reporting the county's
+IML error page as a possible layout change, and its dashboard code differs from the
+October 4 image only by a docstring, so it can serve both services.
 
 As of October 15, 2026, 16:45 UTC, the repository held four images: the October 15 build
 (`0785da0f…`, tagged `latest`), the untagged October 6 build (`9d502c1d…`), the untagged

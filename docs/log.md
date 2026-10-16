@@ -1,6 +1,10 @@
 # Knowledge bundle update log
 
 ## 2026-10-15
+* **Update**: Merged the [October 6 collector update](deployments/2026-10-06.md) record
+  written on October 6 into the reconstructed one, confirming the build commit (`dad628b`)
+  and adding the build's test results and the court-report re-parse backlog; updated
+  [retained images](deployments/retained-images.md) to match.
 * **Verification**: Checked the bundle against the code at `b80fab0`, the live Google Cloud
   project (read-only), collector logs, and Monitoring. Corrected the
   [07:00 UTC roster](source-quality/iml-0700-roster-shrinks.md) (missed again October 9, 11, 12,
@@ -25,6 +29,9 @@
   [monitoring and limits](operations/monitoring-and-limits.md).
 
 ## 2026-10-06
+* **Update**: Recorded the [October 6 collector deployment](deployments/2026-10-06.md) and
+  updated [retained images](deployments/retained-images.md) and the
+  [cloud deployment](operations/cloud-deployment.md).
 * **Creation**: Quarantined unreadable court-report rows after one unescaped quote kept the
   court-report alert open: the [decision](decisions/2026-10-06-quarantine-unreadable-court-rows.md),
   the [source-quality issue](source-quality/xfer-court-unescaped-quote.md), and updates to

@@ -101,9 +101,9 @@ def test_index_frontmatter_is_only_okf_version_at_the_root(tmp_path):
     assert any("only allowed at the bundle root" in p for p in problems)
 
 
-@pytest.mark.skipif(not (ROOT / "docs" / "index.md").exists(),
-                    reason="docs/ is not part of the Cloud Build context")
+@pytest.mark.skipif(not (ROOT / "knowledge" / "index.md").exists(),
+                    reason="knowledge/ is not part of the Cloud Build context")
 def test_the_project_knowledge_bundle_is_conformant():
-    problems, count = check_knowledge.check_bundle(ROOT / "docs")
+    problems, count = check_knowledge.check_bundle(ROOT / "knowledge")
     assert problems == []
     assert count > 0

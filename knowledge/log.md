@@ -1,5 +1,13 @@
 # Knowledge bundle update log
 
+## 2026-11-02
+* **Migration**: Moved the bundle from `docs/` to `knowledge/`, keeping each file's Git
+  history, and repointed the README, `scripts/check_knowledge.py`, `tests/test_knowledge.py`,
+  the fixtures README, and code comments that named the old path; updated
+  [maintaining the knowledge bundle](maintaining-knowledge.md). Concept content is unchanged.
+  Pre-migration `sources` permalinks (commit `61a6e3a`) and dated records still name the
+  `docs/*.md` files that existed at the time.
+
 ## 2026-10-15
 * **Update**: Merged the [October 6 collector update](deployments/2026-10-06.md) record
   written on October 6 into the reconstructed one, confirming the build commit (`dad628b`)

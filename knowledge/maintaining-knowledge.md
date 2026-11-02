@@ -4,7 +4,7 @@ title: Maintaining the knowledge bundle
 description: How to add and update concepts in this OKF v0.2 bundle, including decisions, source-quality issues, deployments, trust, and lifecycle fields.
 resource: ../scripts/check_knowledge.py
 tags: [provenance]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
+generated: { by: claude-code/claude-fable-5-1, at: 2026-11-02T01:20:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
 sources:
   - id: okf-spec
@@ -27,7 +27,7 @@ sources:
 
 # Layout
 
-`docs/` is an Open Knowledge Format v0.2 bundle:[^okf-spec] one markdown concept per unit of
+`knowledge/` is an Open Knowledge Format v0.2 bundle:[^okf-spec] one markdown concept per unit of
 knowledge, each with YAML frontmatter, an `index.md` in every directory, and the bundle's
 [update log](log.md). Start at the [index](index.md).
 
@@ -106,7 +106,7 @@ development dependencies.
 The first command checks OKF conformance, field formats, index entries, footnotes, and
 relative links. The second prints the index entries for one directory from its concepts'
 frontmatter. `tests/test_knowledge.py` runs the same check with the test suite; Cloud Build
-does not upload `docs/`, so there only the checker's own tests run.
+does not upload `knowledge/`, so there only the checker's own tests run.
 
 [^okf-spec]: Open Knowledge Format specification, version 0.2
 [^plan-l99]: PLAN.md, verification and handoff

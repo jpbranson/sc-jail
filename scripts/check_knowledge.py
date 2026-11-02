@@ -1,6 +1,6 @@
-"""Check the docs/ knowledge bundle against Open Knowledge Format (OKF) v0.2.
+"""Check the knowledge/ bundle against Open Knowledge Format (OKF) v0.2.
 
-    python scripts/check_knowledge.py [BUNDLE]          # default: docs/
+    python scripts/check_knowledge.py [BUNDLE]          # default: knowledge/
     python scripts/check_knowledge.py --entries DIR     # print index.md entries for DIR
 
 Checks what OKF requires (every concept has parseable YAML frontmatter with a non-empty
@@ -252,7 +252,7 @@ def entries(directory):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("bundle", nargs="?", default=ROOT / "docs", type=Path)
+    parser.add_argument("bundle", nargs="?", default=ROOT / "knowledge", type=Path)
     parser.add_argument("--entries", type=Path, help="print index entries for one directory")
     args = parser.parse_args(argv)
     if args.entries:

@@ -23,7 +23,7 @@ PRICES = {
 }
 # Free allowances per billing account per month. The Cloud Run CPU and memory allowances
 # are applied as free-tier credits rather than catalog tiers (see
-# docs/cost/measured-usage-2026-09-26.md).
+# knowledge/cost/measured-usage-2026-09-26.md).
 FREE = {
     "run_cpu_second": 180_000,
     "run_gib_second": 360_000,

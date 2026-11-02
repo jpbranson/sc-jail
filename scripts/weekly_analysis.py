@@ -9,7 +9,7 @@ then runs each product script into data/analysis/weekly/<Central date>/. The boo
 panel must reproduce every archived IML population, or the steps that depend on it are
 skipped. Reads only the local mirror, never the live bucket through the Python client,
 so analysis cannot touch collection state. Outputs are private; see
-docs/analysis/weekly-run.md.
+knowledge/analysis/weekly-run.md.
 """
 
 import argparse

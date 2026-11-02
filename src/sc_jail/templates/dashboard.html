@@ -71,6 +71,53 @@
         alt="People appearing above zero and disappearing below zero between consecutive IML collections."></noscript></div>
       <noscript><p><a href="/chart/changes.svg?days={{ days }}&amp;width=1000">Open roster changes chart</a></p></noscript>
     </section>
+    <section class="panel" aria-labelledby="forecast-title">
+      <h2 id="forecast-title">Population forecast</h2>
+      <p class="caption">Each point is the day's average count (Memphis time), for complete days only. The forecast is the latest complete day's level shifted by the usual difference between weekdays. The dashed line shows what that rule predicted one day earlier; the shaded range covers 80% of past misses at that distance ahead. This panel uses the whole 90-day history, independent of the population time range.</p>
+      <div class="forecast-charts">
+        {% for name, title, unit in [('iml','IML roster','people'),('xfer','In-jail report','bookings')] %}
+        <div>
+          <h3>{{ title }}: {{ unit }}</h3>
+          <div class="plot-frame"><img class="plot plot-live" data-kind="forecast-{{ name }}" data-days="{{ days }}"
+        data-version="{{ chart_version }}" height="370"
+        alt="Daily average {{ unit }} in the {{ title | lower }} with the forecast made one day earlier and the next seven days. Exact values are in the chart values below."><noscript><img class="plot"
+        src="{{ url_for('chart', kind='forecast-' ~ name, days=days, width=360) }}" width="360" height="370"
+        alt="Daily average {{ unit }} in the {{ title | lower }} with the forecast made one day earlier and the next seven days. Exact values are in the chart values below."></noscript></div>
+          <noscript><p><a href="/chart/forecast-{{ name }}.svg?width=1000">Open {{ title | lower }} forecast chart</a></p></noscript>
+        </div>
+        {% endfor %}
+      </div>
+      <div data-refresh="forecast-values">
+      {% for name, title, unit in [('iml','IML roster','people'),('xfer','In-jail report','bookings')] %}
+      {% set f = forecasts[name] %}
+      {% if f.available %}
+      <p class="caption">{{ title }}: over the last {{ f.errors }} days, the day-before forecast missed by {{ '%g' | format(f.typical_miss) }} {{ unit }} on average. Usual weekday differences: {% for weekday, offset in f.offsets.items() %}{{ weekday[:3] }} {{ '%+g' | format(offset) }}{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+      {% else %}
+      <p class="notice">{{ title }}: {{ f.note }}.</p>
+      {% endif %}
+      {% endfor %}
+      {% if forecasts['iml'].available or forecasts['xfer'].available %}
+      <details class="chart-values">
+        <summary>View forecast chart values</summary>
+        <div class="forecast-charts">
+          {% for name, title, unit in [('iml','IML roster','people'),('xfer','In-jail report','bookings')] %}
+          {% set f = forecasts[name] %}
+          {% if f.available %}
+          <div class="table-frame"><table>
+            <thead><tr><th scope="col">{{ title }}</th><th scope="col">Daily average</th><th scope="col">Forecast</th><th scope="col">Miss or range</th></tr></thead>
+            <tbody>
+              {% for row in f.days[-7:] %}<tr><th scope="row">{{ row.date }}</th><td>{{ row.actual | number }}</td><td>{{ row.forecast | number }}</td><td>{% if row.miss is not none %}{{ '%+d' | format(row.miss) }}{% else %}—{% endif %}</td></tr>{% endfor %}
+              {% for row in f.ahead %}<tr><th scope="row">{{ row.date }}</th><td>—</td><td>{{ row.forecast | number }}</td><td>{% if row.low is not none %}{{ row.low | number }} to {{ row.high | number }}{% else %}—{% endif %}</td></tr>{% endfor %}
+            </tbody>
+          </table></div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+      </div>
+      <p class="caption">A day needs at least 24 of its 96 quarter-hour observations to count; no day-before forecast is shown after a missing day. The rule has no trend term, so it will lag a sustained rise or fall.</p>
+    </section>
     <section class="panel" aria-labelledby="repeat-title">
       <h2 id="repeat-title">Repeat visits</h2>
       <p class="caption">A visit is a distinct booking for the same IML permanent ID. Seeing the same booking at multiple collections counts once. These charts use all archived observations, independent of the population time range.</p>

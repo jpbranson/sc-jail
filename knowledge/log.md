@@ -1,6 +1,18 @@
 # Knowledge bundle update log
 
 ## 2026-11-02
+* **Update**: Recorded the [November 2 deployment](deployments/2026-11-02.md) of the
+  forecast panel, marked the [October 15 record](deployments/2026-10-15.md) superseded, and
+  updated [retained images](deployments/retained-images.md) and
+  [cloud deployment](operations/cloud-deployment.md).
+* **Creation**: Added the [population time series](analysis/time-series.md) analysis
+  (`scripts/time_series.py`, a new weekly-run step), the dashboard's
+  [population forecast](measures/population-forecast.md) measure, and the
+  [decision](decisions/2026-11-02-dashboard-forecast.md) to show a weekday-adjusted latest-day
+  forecast for both sources; updated the [weekly run](analysis/weekly-run.md) and
+  [project overview](project.md). Findings through October 27: a weekly cycle of about 50
+  people (Monday and Tuesday high, Friday and Saturday low), no usable trend, and a one-day
+  forecast miss of about 14 people.
 * **Migration**: Moved the bundle from `docs/` to `knowledge/`, keeping each file's Git
   history, and repointed the README, `scripts/check_knowledge.py`, `tests/test_knowledge.py`,
   the fixtures README, and code comments that named the old path; updated

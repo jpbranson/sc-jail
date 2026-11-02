@@ -8,6 +8,7 @@
 * [Population profile](population-profile.md) - Aggregate profile of who the IML roster lists as held on one day, with definitions and first results from September 23, 2026.
 * [Booking panel](booking-panel.md) - Private one-row-per-booking history replayed from every committed IML roster and detail observation and validated against every archived population.
 * [Trends](trends.md) - Lines up weekly profile summaries by roster date and shows 23 measures side by side with the change since the previous run.
+* [Population time series](time-series.md) - Daily average population by Central day, its weekday and hour-of-day cycles, and a backtest of simple forecast rules, including the one the dashboard shows.
 * [Source reconciliation](source-reconciliation.md) - Compares each XFER jail workbook version with the nearest IML roster by exact booking number, including shared fields and bookings only one source lists.
 
 # Staged analyses

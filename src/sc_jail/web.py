@@ -11,6 +11,7 @@ from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, jsonify, render_template, request
 
+from . import forecast
 from .pipeline import collect_all, empty_index
 from .storage import Conflict, read_json
 
@@ -156,6 +157,7 @@ def create_app(config, store):
             labels=LABELS,
             supplements=data.get("supplements", {}),
             repeats=data.get("repeat_visits", {}),
+            forecasts={name: forecast.summarize(data, name, CHICAGO) for name in LABELS},
             chart_version=chart_version(data),
             storage_error=cache["error"],
             storage_loaded_at=cache["loaded_at"],
@@ -165,7 +167,8 @@ def create_app(config, store):
 
     @app.get("/chart/<kind>.svg")
     def chart(kind):
-        if kind not in ("population", "changes", "repeat-visits", "visit-intervals"):
+        if kind not in ("population", "changes", "repeat-visits", "visit-intervals",
+                        "forecast-iml", "forecast-xfer"):
             return "Not found", 404
         try:
             width = int(request.args.get("width", "1000"))
@@ -180,13 +183,15 @@ def create_app(config, store):
             if svg is None:
                 from . import charts
 
-                svg = (
-                    charts.make_repeat_chart(
+                if kind in ("repeat-visits", "visit-intervals"):
+                    svg = charts.make_repeat_chart(
                         data.get("repeat_visits", {}), width, intervals=kind == "visit-intervals"
                     )
-                    if kind in ("repeat-visits", "visit-intervals")
-                    else charts.make_chart(data, days, width, changes=kind == "changes")
-                )
+                elif kind.startswith("forecast-"):
+                    source = kind.removeprefix("forecast-")
+                    svg = charts.make_forecast_chart(forecast.summarize(data, source, CHICAGO), width)
+                else:
+                    svg = charts.make_chart(data, days, width, changes=kind == "changes")
                 chart_cache[key] = svg
                 while len(chart_cache) > 32:
                     chart_cache.popitem(last=False)

@@ -3,7 +3,7 @@
 import io
 import threading
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from matplotlib import dates as mdates
@@ -205,3 +205,63 @@ def make_repeat_chart(summary, width, *, intervals=False):
         FigureCanvasSVG(fig).print_svg(out)
         return out.getvalue()
 
+
+
+def make_forecast_chart(summary, width):
+    """Daily averages, the forecast made one day earlier, and the week ahead with its band."""
+    width = max(360, min(1800, width))
+    with (
+        _plot_lock,
+        rc_context({
+            "font.family": "sans-serif",
+            "font.sans-serif": ["DejaVu Sans", "Arial", "Helvetica", "sans-serif"],
+            "font.size": 12,
+            "svg.fonttype": "none",
+            "axes.unicode_minus": False,
+        }),
+    ):
+        fig = Figure(figsize=(width / 96, 370 / 96), dpi=96, facecolor="white")
+        ax = fig.subplots()
+        fig.subplots_adjust(
+            left=min(0.22, 72 / width), right=0.97, bottom=0.36 if width < 650 else 0.27, top=0.94
+        )
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.tick_params(length=0, pad=8)
+        if summary.get("available"):
+            color = COLORS[summary["source"]]
+            days, ahead = summary["days"], summary["ahead"]
+            dates = [date.fromisoformat(d["date"]) for d in days + ahead]
+            dashed = [d["forecast"] if d["forecast"] is not None else float("nan")
+                      for d in days + ahead]
+            ax.plot([date.fromisoformat(d["date"]) for d in days], [d["actual"] for d in days],
+                    color=color, linewidth=1.8, marker="o", markersize=4, label="Daily average")
+            ax.plot(dates, dashed, color="#737373", linewidth=1.5, linestyle="--",
+                    label="Forecast made the day before")
+            banded = [d for d in ahead if d["low"] is not None]
+            if banded:
+                ax.fill_between([date.fromisoformat(d["date"]) for d in banded],
+                                [d["low"] for d in banded], [d["high"] for d in banded],
+                                color=color, alpha=0.15, linewidth=0,
+                                label="Range of 80% of past misses")
+            ax.axvline(date.fromisoformat(summary["origin"]), color="#aaaaaa", linewidth=0.8)
+            ax.set_axisbelow(True)
+            ax.grid(axis="both", color="#e8e8e8", linewidth=0.7)
+            ax.xaxis.set_major_locator(mdates.AutoDateLocator(minticks=2,
+                                                              maxticks=3 if width < 650 else 6))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%b %d"))
+            low, high = ax.get_ylim()
+            if high - low < 20:
+                middle = (high + low) / 2
+                ax.set_ylim(middle - 10, middle + 10)
+            ax.yaxis.get_major_locator().set_params(integer=True)
+            ax.legend(loc="upper left", bbox_to_anchor=(0, -0.24), frameon=False,
+                      ncol=1 if width < 650 else 3, borderaxespad=0)
+        else:
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.text(0.5, 0.5, summary.get("note") or "Forecast is not available",
+                    ha="center", va="center", transform=ax.transAxes, color="#666666")
+        out = io.StringIO()
+        FigureCanvasSVG(fig).print_svg(out)
+        return out.getvalue()

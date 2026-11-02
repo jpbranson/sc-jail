@@ -1,8 +1,24 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sc_jail.config import Config
 from sc_jail.storage import LocalStore, write_json
 from sc_jail.web import create_app, create_collector_app, source_health
+
+CHICAGO = ZoneInfo("America/Chicago")
+
+
+def daily_history(days, start=date(2026, 9, 21)):
+    """Quarter-hour points for consecutive Central days with a weekly pattern."""
+    points = []
+    for n in range(days):
+        day = start + timedelta(days=n)
+        midnight = datetime.combine(day, datetime.min.time(), CHICAGO)
+        for slot in range(96):
+            moment = (midnight + timedelta(minutes=15 * slot)).astimezone(timezone.utc)
+            points.append({"observed_at": moment.isoformat(), "slot": moment.isoformat(),
+                           "population": 3000 + [30, 27, 0, -8, -19, -22, -8][day.weekday()]})
+    return points
 
 
 def test_empty_dashboard_csv_and_charts(tmp_path):
@@ -26,7 +42,7 @@ def test_dashboard_has_working_chart_sources_without_javascript(tmp_path):
     client = create_app(Config(), LocalStore(tmp_path)).test_client()
     page = BeautifulSoup(client.get("/?days=30").data, "html.parser")
     fallbacks = page.select("noscript img.plot")
-    assert len(fallbacks) == 4
+    assert len(fallbacks) == 6
     for plot in fallbacks:
         response = client.get(plot["src"])
         assert response.status_code == 200
@@ -36,7 +52,7 @@ def test_dashboard_has_working_chart_sources_without_javascript(tmp_path):
     # before layout; the script requests each chart once at its measured width.
     live = page.select("img.plot-live")
     assert [plot["data-kind"] for plot in live] == [
-        "population", "changes", "repeat-visits", "visit-intervals"]
+        "population", "changes", "forecast-iml", "forecast-xfer", "repeat-visits", "visit-intervals"]
     assert all(not plot.has_attr("src") and plot["data-days"] == "30" for plot in live)
     assert ".plot-live{display:none}" in page.select_one("head noscript").decode()
     # Layout and chart initialization arrive atomically with the document.
@@ -53,7 +69,7 @@ def test_dashboard_marks_refresh_regions_and_chart_versions(tmp_path, monkeypatc
     app = create_app(Config(), store)
     page = BeautifulSoup(app.test_client().get("/").data, "html.parser")
     regions = [region["data-refresh"] for region in page.select("[data-refresh]")]
-    assert regions == ["storage", "metrics", "repeat-summary", "repeat-values",
+    assert regions == ["storage", "metrics", "forecast-values", "repeat-summary", "repeat-values",
                        "source-details", "case-detail"]
     # Refreshable regions never contain a live chart, so refreshing cannot reload one.
     assert not page.select("[data-refresh] img.plot-live")
@@ -108,7 +124,8 @@ def test_mobile_chart_labels_stay_inside_svg():
     import re
     from xml.etree import ElementTree as ET
 
-    from sc_jail.charts import make_chart
+    from sc_jail.charts import make_chart, make_forecast_chart
+    from sc_jail.forecast import summarize
 
     now = datetime.now(timezone.utc)
     point = {
@@ -119,8 +136,9 @@ def test_mobile_chart_labels_stay_inside_svg():
         "departures": 1,
     }
     index = {"sources": {name: {"history": [point]} for name in ("iml", "xfer")}}
-    for changes in (False, True):
-        svg = make_chart(index, 7, 378, changes=changes)
+    forecast = summarize({"sources": {"iml": {"history": daily_history(24)}}}, "iml", CHICAGO)
+    for svg in (make_chart(index, 7, 378), make_chart(index, 7, 378, changes=True),
+                make_forecast_chart(forecast, 378)):
         root = ET.fromstring(svg)
         _, _, view_width, view_height = map(float, root.attrib["viewBox"].split())
         labels = root.findall(".//{http://www.w3.org/2000/svg}text")
@@ -318,3 +336,21 @@ def test_freshness_health_grades_each_product_without_changing_the_status_code(t
         "iml": "warn", "xfer": "fail", "iml_details": "warn", "xfer_courts": "fail", "repeat_visits": "warn"}
     assert health["checks"]["iml_details"]["detail"] == "Coverage incomplete; 3,100 of 3,200 fresh"
     assert health["checks"]["xfer_courts"]["last_success_at"] is None  # no data yet
+
+
+def test_forecast_charts_and_values_render_from_history(tmp_path):
+    store = LocalStore(tmp_path)
+    write_json(store, "public/index.json", {"sources": {
+        "iml": {"history": daily_history(24)}, "xfer": {"history": daily_history(5)}}})
+    client = create_app(Config(), store).test_client()
+    page = client.get("/").data
+    assert b"View forecast chart values" in page
+    assert b"IML roster: over the last" in page
+    assert b"In-jail report: Forecast needs two weeks of complete days" in page
+    assert b"Mon +30, Tue +27, Wed +0, Thu -8, Fri -19, Sat -22, Sun -8" in page
+    iml = client.get("/chart/forecast-iml.svg?width=1000")
+    assert iml.status_code == 200 and iml.mimetype == "image/svg+xml"
+    assert b"Forecast made the day before" in iml.data and b"Range of 80%" in iml.data
+    xfer = client.get("/chart/forecast-xfer.svg?width=360")
+    assert xfer.status_code == 200 and b"two weeks" in xfer.data
+    assert client.get("/chart/forecast-other.svg").status_code == 404

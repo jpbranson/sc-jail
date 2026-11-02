@@ -238,12 +238,12 @@ h3 {
 .repeat-metrics .value {
   font-size:2rem
 }
-.repeat-charts {
+.repeat-charts,.forecast-charts {
   display:grid;
   grid-template-columns:repeat(2,minmax(0,1fr));
   gap:26px
 }
-.repeat-charts>div {
+.repeat-charts>div,.forecast-charts>div {
   min-width:0
 }
 .repeat-charts .caption {
@@ -263,7 +263,7 @@ h3 {
 }
 
 @media(max-width:1200px) {
-  .repeat-charts {
+  .repeat-charts,.forecast-charts {
   grid-template-columns:1fr
 }
 .repeat-metrics {

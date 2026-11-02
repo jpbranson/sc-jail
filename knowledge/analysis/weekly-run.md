@@ -4,7 +4,7 @@ title: Weekly analysis run
 description: Local weekly job that refreshes the archive mirror and rebuilds every analysis product into a dated folder, run by the SC-Jail-Weekly-Analysis task.
 resource: ../../scripts/weekly_analysis.py
 tags: [analysis, local, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
+generated: { by: claude-code/claude-fable-5-1, at: 2026-11-02T02:05:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: analysis-l139
@@ -27,7 +27,8 @@ $env:PATH = "$PWD\.runtime\google-cloud-sdk\bin;$env:PATH"
   changed objects (seconds after the first copy), using the normal `gcloud auth login`
   sign-in. The run fails if the newest roster slot is more than three hours old.
 - Steps run in separate processes: mirror, [booking panel](booking-panel.md),
-  [profile](population-profile.md), [trends](trends.md), [reconciliation](source-reconciliation.md),
+  [profile](population-profile.md), [trends](trends.md),
+  [population time series](time-series.md), [reconciliation](source-reconciliation.md),
   [length of stay](length-of-stay.md), [money bond](money-bond.md), [court linkage](court-linkage.md),
   [re-booking](rebooking.md), and a monthly cost projection
   ([`scripts/usage_report.py`](../../scripts/usage_report.py); `--skip-usage` leaves it out and
@@ -57,4 +58,7 @@ after October 17 (bond, court timing), October 19 (length of stay), and December
 
 Latest weekly run recorded here (September 30, 2026): all ten steps were ok in about 14 minutes
 (the panel took 647 seconds), with no readout ready yet. The October 7 and 14 runs, if any, are
-not recorded; their output is only on the owner's Windows machine.
+not recorded; their output is only on the owner's Windows machine. The owner's machine also holds
+the October 21 and 28 runs; on October 28 all ten steps were ok (the panel took 2,247 seconds),
+with the length-of-stay, bond, and court readouts ready. The time-series step was added on
+November 2, 2026 and takes about 45 seconds on the mirror.

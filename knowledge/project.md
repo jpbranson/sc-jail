@@ -3,7 +3,7 @@ type: Project Overview
 title: Shelby County jail
 description: Two Python source collectors, case detail archives, and a small Flask dashboard that measure the Shelby County jail population from two county sources.
 tags: [population, iml, xfer, dashboard]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T01:54:59Z }
+generated: { by: claude-code/claude-fable-5-1, at: 2026-11-02T02:05:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
 sources:
   - id: readme-l1
@@ -38,13 +38,16 @@ daily. See [case data](architecture/case-data-collection.md),
 [private exports](operations/exports.md), and [refresh settings](architecture/configuration.md).
 The dashboard shows actual detail coverage and report backlog. It also charts
 [repeat visits and time between visits](measures/repeat-visits.md) using distinct
-bookings linked by IML permanent ID across the full archive.
+bookings linked by IML permanent ID across the full archive, and a simple
+[population forecast](measures/population-forecast.md) for both sources, shown against
+what actually happened.
 A private [population profile](analysis/population-profile.md) and
 [booking panel](analysis/booking-panel.md) summarize time held,
 case status, charges, bonds, and court dates, and follow each booking over time, from
 a local archive copy. A [weekly analysis run](analysis/weekly-run.md)
 rebuilds them with [trends](analysis/trends.md), an
-[IML/XFER reconciliation](analysis/source-reconciliation.md), and
+[IML/XFER reconciliation](analysis/source-reconciliation.md), the
+[population time series](analysis/time-series.md), and
 [length-of-stay](analysis/length-of-stay.md), [money-bond](analysis/money-bond.md),
 [court-linkage](analysis/court-linkage.md), and [re-booking](analysis/rebooking.md) analyses.
 Source behaviors that affect these measures are kept in the

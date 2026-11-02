@@ -1,3 +1,7 @@
+# 2026-11-02
+
+* [Show a weekday-adjusted latest-day forecast on the dashboard](2026-11-02-dashboard-forecast.md) - The dashboard forecasts both sources' daily average with the latest complete day shifted by the weekday pattern, computed from the public index at request time, with its past misses shown alongside.
+
 # 2026-10-06
 
 * [Quarantine unreadable court-report rows](2026-10-06-quarantine-unreadable-court-rows.md) - A court report with a few unreadable rows is parsed without them; more than 1% unreadable rows keeps the report unsupported and alerting.

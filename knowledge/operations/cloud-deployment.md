@@ -4,7 +4,7 @@ title: Google Cloud deployment
 description: The live sc-jail deployment in sc-jail-research-20260922 (us-central1), with its services, archive, backup, Scheduler, monitoring, budget, and identities.
 resource: https://console.cloud.google.com/home/dashboard?project=sc-jail-research-20260922
 tags: [cloud, deployment, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
+generated: { by: claude-code/claude-fable-5-1, at: 2026-11-02T03:05:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
 sources:
   - id: cloud-l1
@@ -29,13 +29,13 @@ sources:
 
 The collectors and dashboard are deployed to Google
 Cloud in `us-central1`. Initially deployed September 22, 2026; updated to 0.2.0 on
-September 23 UTC and redeployed on September 26, 27, and 28, twice on October 4, and on
-October 15; the collector alone was also updated on October 6.
+September 23 UTC and redeployed on September 26, 27, and 28, twice on October 4, on
+October 15, and on November 2; the collector alone was also updated on October 6.
 The live service configuration, Scheduler, backup settings, and public endpoints were
-rechecked on September 23, October 4, and October 15. See the
+rechecked on September 23, October 4, October 15, and November 2. See the
 [0.2.0 release record](../deployments/2026-09-23-release-0-2-0.md) for that release's
 validation. The current deployment record is
-[October 15](../deployments/2026-10-15.md); every deployment is listed
+[November 2](../deployments/2026-11-02.md); every deployment is listed
 in [deployments](../deployments/index.md).
 
 # Resources

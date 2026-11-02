@@ -1,10 +1,11 @@
 # Current
 
-* [October 15 deployment](2026-10-15.md) - Image from main at b80fab0 that reports county IML server error pages as server errors; the current deployment as of October 15, 2026.
-* [Retained images and rollback](retained-images.md) - Which container images remain available for rollback under the image cleanup policy, as recorded after the October 15 deployment.
+* [November 2 deployment](2026-11-02.md) - Image from analysis/time-series-forecast at 89f3ddf that adds the dashboard's population forecast panel; the current deployment as of November 2, 2026.
+* [Retained images and rollback](retained-images.md) - Which container images remain available for rollback under the image cleanup policy, as recorded after the November 2 deployment.
 
 # Superseded
 
+* [October 15 deployment](2026-10-15.md) - Image from main at b80fab0 that reports county IML server error pages as server errors; the deployment from October 15 to November 2, 2026.
 * [October 6 collector update](2026-10-06.md) - Collector-only update at 20:50 UTC on October 6 from commit dad628b that quarantines unreadable court-report rows.
 * [October 4, 16:24 UTC deployment](2026-10-04-1624.md) - Image from commit 5ced56f that accepts IML roster rows with a blank permanent ID; its dashboard image served until October 15.
 * [October 4, 16:06 UTC deployment](2026-10-04-1606.md) - First October 4 fix that restored the IML roster and record pages while repeat-visit refresh still rejected the blank permanent ID.

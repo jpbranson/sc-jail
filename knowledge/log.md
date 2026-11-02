@@ -1,6 +1,10 @@
 # Knowledge bundle update log
 
 ## 2026-11-02
+* **Update**: Recorded the [November 2 deployment](deployments/2026-11-02.md) of the
+  forecast panel, marked the [October 15 record](deployments/2026-10-15.md) superseded, and
+  updated [retained images](deployments/retained-images.md) and
+  [cloud deployment](operations/cloud-deployment.md).
 * **Creation**: Added the [population time series](analysis/time-series.md) analysis
   (`scripts/time_series.py`, a new weekly-run step), the dashboard's
   [population forecast](measures/population-forecast.md) measure, and the

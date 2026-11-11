@@ -167,6 +167,9 @@ def collect_all(config, store, *, scheduled_at=None, adapters=None, now=utc_now)
             supplementary = collect_supplements(
                 config, store, index, slot, deadline=started + 570, now=now
             )
+            # Publish supplements now; an overrunning repeat refresh can lose the final write.
+            index["updated_at"] = now().isoformat()
+            index_version = write_json(store, "public/index.json", index, expected=index_version)
             from .repeats import refresh_repeat_visits
 
             try:

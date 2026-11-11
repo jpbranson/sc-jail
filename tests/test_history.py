@@ -1,4 +1,5 @@
 import copy
+import time
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -306,3 +307,15 @@ def test_conflicting_migration_backup_prevents_replacement(tmp_path):
         migrate_archive(store)
     assert read_json(store, key)[0]["schema"] == 1
     assert reconstruct_state(store, key) == state()
+
+
+def test_reconstruction_stops_at_its_deadline(tmp_path):
+    store = LocalStore(tmp_path)
+    previous, normalized = None, state()
+    for interval in range(4):
+        normalized = altered(normalized) if interval % 2 else state()
+        previous = persist(store, normalized, NOW + timedelta(minutes=15 * interval), previous)
+    with pytest.raises(TimeoutError):
+        reconstruct_state(store, previous["manifest_key"], deadline=time.monotonic() - 1)
+    later = time.monotonic() + 60
+    assert reconstruct_state(store, previous["manifest_key"], deadline=later) == normalized

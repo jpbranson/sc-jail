@@ -3,7 +3,7 @@ type: Reference
 title: Monitoring and limits
 description: Health and freshness endpoints, uptime alerts, the tracker health object, retry behavior, collector time limits, and known alert patterns.
 tags: [monitoring, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-11T14:00:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: cloud-l467
@@ -97,6 +97,28 @@ sources:
   counted as `quarantined_rows` in `/api/coverage`, without changing health. A report with
   more quarantined rows than 1% of its data rows (below 100 data rows, any quarantined row)
   stays unsupported, so the check still returns 503 and alerts.
+- On November 11 the record-page and court-report checks alerted (13:12 and 13:14 UTC) and
+  the repeat-visit check returned 503, while population collection stayed healthy. IML
+  scans had roughly doubled since about 19:00 UTC on November 10 (hourly averages of 250
+  to 370 seconds, against about 120), so the 12:00 slot left no time for the repeat-visit
+  refresh. With more than one observation queued, the refresh's first key replays that
+  UTC day's whole history chain, which took minutes on 0.25 vCPU and ignored the budget.
+  Runs then hit Cloud Run's 600-second limit (HTTP 504). The leftover work, frozen by CPU
+  throttling until the next request, passed the lease margin, so its final
+  `public/index.json` write was refused and the supplement results already committed to
+  the archive were never published. A Scheduler retry at 13:41, with the population
+  already collected, had time to publish them; Scheduler skipped the 13:45 slot while that
+  retry ran. The repeat-visit backlog was cleared by hand at 13:52 (runbook below). The
+  code fix publishes the index straight after supplements and stops the history replay at
+  the budget; it was not yet deployed when this was written.
+- **Repeat-visit backlog runbook.** When `/api/freshness/repeat_visits` stays 503 and
+  collector logs show "Repeat-visit refresh deferred" or "Collector lease is too close to
+  expiry": pause the `sc-jail-quarter-hour` Scheduler job, wait until
+  `private/collector-lease.json` has expired, run `scripts/update_repeat_visits.py` with
+  `SCJ_BUCKET` set (a second run picks up observations past a resumed calculation's
+  targets), then resume the job. On a machine where `GOOGLE_APPLICATION_CREDENTIALS`
+  names another project's key, unset it for the run so application-default credentials
+  apply. The script holds the collector lease and contacts no county source.
 - Cloud outages and source outages cannot be backfilled from a live current
   roster. Original observation times are always preserved.
 - A warm dashboard retains the last validated aggregate index during a storage

@@ -1,3 +1,4 @@
+import time
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -245,3 +246,29 @@ def test_completed_rebuild_does_not_resume_its_old_frozen_targets(tmp_path):
     assert refresh_repeat_visits(store, rebuild=True)["bookings_seen"] == 21
     observe(store, "iml", [roster("A", "NEW")], NOW + timedelta(minutes=15*21))
     assert refresh_repeat_visits(store)["bookings_seen"] == 22
+
+
+def test_backlog_reconstruction_defers_at_the_deadline_without_publishing(tmp_path, monkeypatch):
+    store = LocalStore(tmp_path)
+    # Enough unchanged rows that each poll is stored as a delta, not a new checkpoint.
+    held = [roster(f"HELD-{i}", f"HELD-{i}") for i in range(50)]
+    for n in range(5):
+        observe(store, "iml", [*held, roster("A", str(n))], NOW + timedelta(minutes=15 * n))
+    refresh_repeat_visits(store)
+    before = store.read(CACHE_KEY)[0]
+    for n in (5, 6):
+        observe(store, "iml", [*held, roster("A", str(n))], NOW + timedelta(minutes=15 * n))
+    # One tick per clock read: both key checks fit the budget, but replaying the
+    # six-link chain behind the first backlog key does not.
+    ticks = [-1.0]
+
+    def clock():
+        ticks[0] += 1
+        return ticks[0]
+
+    monkeypatch.setattr(time, "monotonic", clock)
+    with pytest.raises(TimeoutError, match="deferred by the execution budget"):
+        refresh_repeat_visits(store, deadline=35.0)
+    assert store.read(CACHE_KEY)[0] == before
+    monkeypatch.undo()
+    assert refresh_repeat_visits(store)["bookings_seen"] == 57

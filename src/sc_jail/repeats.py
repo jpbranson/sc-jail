@@ -240,7 +240,18 @@ def refresh_repeat_visits(store, *, deadline=None, rebuild=False):
                 elif state is not None and linked:
                     state = replay_history(store, history, state)
                 else:
-                    state = reconstruct_state(store, key, manifest=manifest)
+                    # A mid-day backlog replays the whole day's chain; keep it inside the budget.
+                    try:
+                        state = reconstruct_state(
+                            store, key, manifest=manifest,
+                            deadline=None if deadline is None else deadline - 30,
+                        )
+                    except TimeoutError:
+                        if pending:
+                            save_progress()
+                        raise TimeoutError(
+                            "Repeat-visit refresh deferred by the execution budget"
+                        ) from None
                 ingest(registry, state["records"], manifest["point"]["observed_at"])
             cursor = {"key": key, "state_sha256": history.get("state_sha256")}
             registry["cursors"][source] = cursor

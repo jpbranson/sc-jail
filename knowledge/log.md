@@ -1,5 +1,11 @@
 # Knowledge bundle update log
 
+## 2026-11-11
+* **Update**: Recorded the November 11 record-page, court-report, and repeat-visit freshness
+  incident (a slow IML source pushed the repeat-visit history replay past the collector's
+  time limit, so finished supplement results went unpublished) and added a repeat-visit
+  backlog runbook to [monitoring and limits](operations/monitoring-and-limits.md).
+
 ## 2026-11-02
 * **Update**: Recorded the [November 2 deployment](deployments/2026-11-02.md) of the
   forecast panel, marked the [October 15 record](deployments/2026-10-15.md) superseded, and

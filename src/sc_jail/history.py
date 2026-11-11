@@ -4,6 +4,7 @@ import gzip
 import hashlib
 import json
 import re
+import time
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -198,12 +199,18 @@ def replay_history(store, history, previous=None):
     return _verified_state(state, history["state_sha256"])
 
 
-def reconstruct_state(store, key, *, manifest=None):
+def _check_deadline(deadline):
+    if deadline is not None and time.monotonic() >= deadline:
+        raise TimeoutError("History reconstruction deferred by the execution budget")
+
+
+def reconstruct_state(store, key, *, manifest=None, deadline=None):
     """Reconstruct a v1 or v2 observation, checking every link (at most one day)."""
     chain, visited = [], set()
     current_key, current = key, manifest
     try:
         while True:
+            _check_deadline(deadline)
             if current_key in visited or len(visited) >= MAX_CHAIN:
                 raise HistoryError("History is cyclic or exceeds one day")
             visited.add(current_key)
@@ -237,6 +244,7 @@ def reconstruct_state(store, key, *, manifest=None):
             current_key, current = previous_key, None
         digest = state_hash(state)
         for history in reversed(chain):
+            _check_deadline(deadline)
             if history["kind"] == "unchanged":
                 # The already-verified state is identical; avoid rehashing thousands
                 # of rows once per unchanged poll when replaying a full day.
@@ -246,6 +254,8 @@ def reconstruct_state(store, key, *, manifest=None):
                 state = replay_history(store, history, state)
                 digest = history["state_sha256"]
         return state
+    except TimeoutError:
+        raise  # An OSError subclass, but a budget deferral rather than unreadable history.
     except (KeyError, TypeError, ValueError, OSError, EOFError) as exc:
         raise HistoryError("Observation history is invalid or unreadable") from exc
 

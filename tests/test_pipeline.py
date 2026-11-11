@@ -223,3 +223,33 @@ def test_delta_retry_after_working_state_or_index_failure(tmp_path, monkeypatch)
         assert checkpoint["state"]["active_ids"] == ["B", "C"]
         public, _ = read_json(store, "public/index.json")
         assert len(public["sources"]["xfer"]["history"]) == step + 1
+
+
+def test_supplements_are_published_before_the_repeat_refresh(tmp_path, monkeypatch):
+    from sc_jail import pipeline, repeats, supplemental
+
+    store = LocalStore(tmp_path)
+    original = store.write
+    lease_expired = []
+
+    def write(key, *args, **kwargs):
+        if lease_expired:
+            raise Conflict("Collector lease is too close to expiry to commit safely")
+        return original(key, *args, **kwargs)
+
+    def supplements(config, store, index, slot, **_):
+        index.setdefault("supplements", {})["iml_details"] = {"last_success": slot.isoformat()}
+        return {"iml_details": {"status": "success"}}
+
+    def overrunning_refresh(*_, **__):
+        lease_expired.append(True)
+        raise Conflict("Collector lease is too close to expiry to commit safely")
+
+    monkeypatch.setattr(store, "write", write)
+    monkeypatch.setattr(pipeline, "SOURCES", {"iml": lambda *_: payload()})
+    monkeypatch.setattr(supplemental, "collect_supplements", supplements)
+    monkeypatch.setattr(repeats, "refresh_repeat_visits", overrunning_refresh)
+    with pytest.raises(Conflict):
+        collect_all(Config(), store, now=lambda: NOW)
+    index, _ = read_json(store, "public/index.json")
+    assert index["supplements"]["iml_details"]["last_success"] == NOW.isoformat()

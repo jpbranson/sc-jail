@@ -1,6 +1,12 @@
 # Knowledge bundle update log
 
 ## 2026-11-11
+* **Update**: Recorded the [November 11 deployment](deployments/2026-11-11.md) of the
+  repeat-visit and supplement-publishing fix, marked the
+  [November 2 record](deployments/2026-11-02.md) superseded, and updated
+  [retained images](deployments/retained-images.md),
+  [cloud deployment](operations/cloud-deployment.md), and
+  [monitoring and limits](operations/monitoring-and-limits.md).
 * **Update**: Recorded the November 11 record-page, court-report, and repeat-visit freshness
   incident (a slow IML source pushed the repeat-visit history replay past the collector's
   time limit, so finished supplement results went unpublished) and added a repeat-visit

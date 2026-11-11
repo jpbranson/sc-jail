@@ -110,7 +110,7 @@ sources:
   already collected, had time to publish them; Scheduler skipped the 13:45 slot while that
   retry ran. The repeat-visit backlog was cleared by hand at 13:52 (runbook below). The
   code fix publishes the index straight after supplements and stops the history replay at
-  the budget; it was not yet deployed when this was written.
+  the budget; it was [deployed at 14:58 UTC](../deployments/2026-11-11.md).
 - **Repeat-visit backlog runbook.** When `/api/freshness/repeat_visits` stays 503 and
   collector logs show "Repeat-visit refresh deferred" or "Collector lease is too close to
   expiry": pause the `sc-jail-quarter-hour` Scheduler job, wait until

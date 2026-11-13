@@ -3,7 +3,7 @@ type: Reference
 title: Monitoring and limits
 description: Health and freshness endpoints, uptime alerts, the tracker health object, retry behavior, collector time limits, and known alert patterns.
 tags: [monitoring, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-11T14:00:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T03:10:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: cloud-l467
@@ -111,6 +111,21 @@ sources:
   retry ran. The repeat-visit backlog was cleared by hand at 13:52 (runbook below). The
   code fix publishes the index straight after supplements and stops the history replay at
   the budget; it was [deployed at 14:58 UTC](../deployments/2026-11-11.md).
+- From that deployment to 03:00 UTC on November 13 the collector returned 51 HTTP 503s, all
+  failed IML attempts and 49 of them logged as
+  [pagination shifts](../source-quality/iml-pagination-shift.md); the other two left no error
+  text. There were no 504s or lease refusals, and no run reported `analytics_delayed`. Five
+  roster slots have no observation: 23:15 UTC on November 12 and 01:45, 02:30, and 02:45 UTC
+  on November 13 failed on every attempt, and Scheduler skipped 00:15 while the 00:00 slot's
+  second retry ran (00:11 to 00:17). All came after 22:30 UTC, when hourly IML scan averages
+  rose from about 130 seconds to 220 to 320, as on the evening of November 10; the evening
+  of November 11 stayed near 130. Longer scans give the roster more time to change. At 02:57
+  UTC the roster had gone 37 minutes without a success, long enough to alert, while the
+  record-page, court-report, and repeat-visit checks returned 200; `/api/freshness/iml`
+  returned 200 again at 03:01. Two runs (10:00 and 22:38 UTC on November 12) ended in HTTP
+  500 when a `public/index.json` write hit Cloud Storage's 20-second read timeout, each after
+  the population was committed. Slow evenings narrow the margin: the median whole-run time on
+  November 13 to 03:00 UTC was about 450 seconds, against the 570-second deadline.
 - **Repeat-visit backlog runbook.** When `/api/freshness/repeat_visits` stays 503 and
   collector logs show "Repeat-visit refresh deferred" or "Collector lease is too close to
   expiry": pause the `sc-jail-quarter-hour` Scheduler job, wait until

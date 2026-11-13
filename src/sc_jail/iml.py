@@ -103,6 +103,24 @@ def start_search(session):
     )
 
 
+def shifted(offset, total, start, end, new_total, detail=""):
+    return SourceError(
+        f"IML pagination shifted during collection "
+        f"(expected row {offset} of {total}; got rows {start}-{end} of {new_total}){detail}"
+    )
+
+
+def verify_prefix(session, start, ids, shift):
+    """Re-read the last accepted page; return the current total only if that page is unchanged."""
+    response = session.request(
+        "POST", "/IML", data={"flow_action": "next", "currentStart": str(start)}
+    )
+    check_start, _, check_total, check_rows = parse_page(response.text)
+    if check_start != start or [r["result_id"] for r in check_rows] != ids:
+        raise shifted(*shift, "; earlier pages changed")
+    return check_total
+
+
 def collect(config, observed_at):
     started = time.monotonic()
     pages, rows, total = [], [], None
@@ -118,6 +136,8 @@ def collect(config, observed_at):
                 raise SourceError("IML search did not begin on the first page")
             pages = [response.text]
             page_size = len(rows)
+            last_start, last_ids = start, [r["result_id"] for r in rows]
+            checked_end = None
             log.info("IML scan started: %s records, %s per page, %.0fs budget, %s page workers",
                      total, page_size, config.iml_timeout, config.iml_page_workers)
             # IML accepts explicit offsets in one search session. Bound concurrency to two
@@ -134,29 +154,47 @@ def collect(config, observed_at):
                             session.request, "POST", "/IML",
                             data={"flow_action": "next", "currentStart": str(offset)},
                         )))
+                    shift = None
                     try:
                         for offset, future in batch:
                             response = future.result()
                             next_start, next_end, next_total, next_rows = parse_page(response.text)
+                            # The roster is ordered by booking number, so a changed total voids the
+                            # pages already read only if the last accepted page has moved. A change
+                            # right after page 1 (the search itself) or before any page is accepted
+                            # since the last check still fails, which bounds the checks per scan.
+                            if (
+                                next_total != total
+                                and next_start == offset
+                                and len(pages) > 1
+                                and end != checked_end
+                            ):
+                                shift = (offset, total, next_start, next_end, next_total)
+                                break
                             if (
                                 next_total != total
                                 or next_start != offset
                                 or next_end != min(offset + page_size - 1, total)
                             ):
-                                raise SourceError(
-                                    f"IML pagination shifted during collection "
-                                    f"(expected row {offset} of {total}; "
-                                    f"got rows {next_start}-{next_end} of {next_total})"
-                                )
+                                raise shifted(offset, total, next_start, next_end, next_total)
                             pages.append(response.text)
                             rows.extend(next_rows)
                             end = next_end
+                            last_start, last_ids = next_start, [r["result_id"] for r in next_rows]
                             if len(pages) % 20 == 0 or end == total:
                                 log.info("IML scan: %s pages, %s/%s records, %.1fs elapsed",
                                          len(pages), len(rows), total, time.monotonic() - started)
                     finally:
+                        # Responses still in flight may predate the change, so they are discarded.
                         for _, future in batch:
                             future.cancel()
+                    if shift:
+                        time.sleep(config.page_delay)
+                        new_total = verify_prefix(session, last_start, last_ids, shift)
+                        log.info("IML roster total changed from %s to %s at row %s; "
+                                 "earlier pages unchanged, scan continues",
+                                 total, new_total, end + 1)
+                        total, checked_end = new_total, end
             if len(rows) != total or len({r["result_id"] for r in rows}) != total:
                 raise SourceError("IML roster is incomplete or contains duplicate result IDs")
             if blank := sum(1 for r in rows if not r["permanent_id"]):

@@ -1,6 +1,13 @@
 # Knowledge bundle update log
 
 ## 2026-11-13
+* **Creation**: Added the [decision](decisions/2026-11-13-resume-after-verified-roster-change.md)
+  to resume an IML scan after a verified roster change. Recorded the investigation behind it
+  (booking-number order, where changes land, and replays of archived scans) in the
+  [pagination-shift issue](source-quality/iml-pagination-shift.md). Recorded the fixed 30-row
+  page size in [IML roster](sources/iml-roster.md). Reworded the handling rule in
+  [07:00 UTC roster shrinks](source-quality/iml-0700-roster-shrinks.md) and updated
+  [monitoring and limits](operations/monitoring-and-limits.md).
 * **Update**: Recorded the November 12 to 13 IML freshness failures in
   [monitoring and limits](operations/monitoring-and-limits.md) and the
   [pagination-shift issue](source-quality/iml-pagination-shift.md): pagination shifts during

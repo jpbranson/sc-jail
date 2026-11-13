@@ -5,7 +5,7 @@ description: The 07:00 UTC (2 a.m. Central) IML roster often fails completeness 
 tags: [iml, population, data-quality]
 affects: IML roster
 first_seen: 2026-09-20
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T04:00:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: source-quality-l11
@@ -36,5 +36,9 @@ triggered the [population alert](../operations/monitoring-and-limits.md) once (S
 
 # Handling
 
-Keep the missed slot; never accept a shrinking roster as a population change. Missed slots are
-listed in each [panel's](../analysis/booking-panel.md) `missing-slots.json`.
+Keep the missed slot; never accept a roster whose already-read pages shifted. Under the
+[November 13, 2026 decision](../decisions/2026-11-13-resume-after-verified-roster-change.md),
+a scan whose total falls only past the pages already read continues against the new total
+after re-reading the last accepted page; a purge inside the pages already read still rejects
+the scan. Missed slots are listed in each
+[panel's](../analysis/booking-panel.md) `missing-slots.json`.

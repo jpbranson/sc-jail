@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -175,6 +176,113 @@ def test_iml_concurrent_pages_are_consumed_in_order(monkeypatch):
     assert [row["result_id"] for row in result["records"]] == ["1", "2", "3", "4", "5"]
     assert result["metrics"]["population"] == 5
     assert result["metrics"]["pages"] == 3
+
+
+def roster_session(listings, switch_at=(), size=2):
+    """Serve a roster that becomes the next listing from each numbered page request in switch_at."""
+    offsets = []
+
+    class Session:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def request(self, method, path, **kwargs):
+            if method == "GET":
+                return SimpleNamespace(text="form")
+            data = kwargs["data"]
+            offset = 1 if data["flow_action"] == "searchbyid" else int(data["currentStart"])
+            offsets.append(offset)
+            ids = listings[sum(len(offsets) >= s for s in switch_at)]
+            return SimpleNamespace(text=page(offset, len(ids), ids[offset - 1:offset - 1 + size]))
+
+    return Session, offsets
+
+
+@pytest.mark.parametrize(
+    ("later", "expected_offsets"),
+    [
+        ([1, 2, 3, 4, 5, 6, 7], [1, 3, 5, 3, 5, 7]),
+        ([1, 2, 3, 4, 6], [1, 3, 5, 3, 5]),
+    ],
+    ids=["added-after-frontier", "removed-after-frontier"],
+)
+def test_iml_continues_when_the_total_changes_past_the_pages_read(
+    monkeypatch, later, expected_offsets
+):
+    Session, offsets = roster_session([[1, 2, 3, 4, 5, 6], later], switch_at=[3])
+    monkeypatch.setattr(iml, "SourceHTTP", Session)
+    result = iml.collect(Config(page_delay=0, iml_page_workers=1), NOW)
+    assert offsets == expected_offsets
+    assert [row["result_id"] for row in result["records"]] == [str(i) for i in later]
+    assert result["metrics"]["population"] == len(later)
+    pages = json.loads(result["artifacts"][0][1])
+    assert result["metrics"]["pages"] == len(pages) == (len(later) + 1) // 2
+
+
+def test_iml_rejects_a_changed_total_when_read_pages_moved(monkeypatch):
+    Session, offsets = roster_session([[1, 2, 3, 4, 5, 6], [1, 3, 4, 5, 6]], switch_at=[3])
+    monkeypatch.setattr(iml, "SourceHTTP", Session)
+    with pytest.raises(SourceError, match=r"pagination shifted.*earlier pages changed"):
+        iml.collect(Config(page_delay=0, iml_page_workers=1), NOW)
+    assert offsets == [1, 3, 5, 3]
+
+
+def test_iml_resumes_after_each_of_several_verified_changes(monkeypatch):
+    listings = [list(range(1, 9)), list(range(1, 10)), list(range(1, 11))]
+    Session, offsets = roster_session(listings, switch_at=[3, 6])
+    monkeypatch.setattr(iml, "SourceHTTP", Session)
+    result = iml.collect(Config(page_delay=0, iml_page_workers=1), NOW)
+    assert offsets == [1, 3, 5, 3, 5, 7, 5, 7, 9]
+    assert [row["result_id"] for row in result["records"]] == [str(i) for i in range(1, 11)]
+
+
+def test_iml_rejects_a_total_that_changes_again_before_any_page_is_accepted(monkeypatch):
+    listings = [list(range(1, 7 + max(0, n - 2))) for n in range(20)]
+    Session, offsets = roster_session(listings, switch_at=range(1, 20))
+    monkeypatch.setattr(iml, "SourceHTTP", Session)
+    with pytest.raises(SourceError, match="pagination shifted"):
+        iml.collect(Config(page_delay=0, iml_page_workers=1), NOW)
+    assert offsets == [1, 3, 5, 3, 5]
+
+
+def test_iml_discards_in_flight_pages_after_a_changed_total(monkeypatch):
+    import threading
+
+    before, after = list(range(1, 10)), list(range(1, 11))
+    seen, lock = [], threading.Lock()
+
+    class Session:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def request(self, method, path, **kwargs):
+            if method == "GET":
+                return SimpleNamespace(text="form")
+            data = kwargs["data"]
+            offset = 1 if data["flow_action"] == "searchbyid" else int(data["currentStart"])
+            # Offset 7 first sees the new total while offset 9, in the same batch, is stale.
+            with lock:
+                ids = after if offset < 7 and offset in seen or offset == 7 or 9 in seen else before
+                seen.append(offset)
+            return SimpleNamespace(text=page(offset, len(ids), ids[offset - 1:offset + 1]))
+
+    monkeypatch.setattr(iml, "SourceHTTP", Session)
+    result = iml.collect(Config(page_delay=0), NOW)
+    assert sorted(seen) == [1, 3, 5, 5, 7, 7, 9, 9]
+    assert [row["result_id"] for row in result["records"]] == [str(i) for i in after]
+    assert result["metrics"]["pages"] == 5
 
 
 def test_iml_timeout_is_configurable_and_bounded(monkeypatch):

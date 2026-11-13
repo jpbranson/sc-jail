@@ -1,3 +1,7 @@
+# 2026-11-13
+
+* [Resume an IML scan after a verified roster change](2026-11-13-resume-after-verified-roster-change.md) - When the IML roster total changes mid-scan, the collector re-reads the last accepted page and continues against the new total only if that page is unchanged, instead of rejecting every shifted scan.
+
 # 2026-11-02
 
 * [Show a weekday-adjusted latest-day forecast on the dashboard](2026-11-02-dashboard-forecast.md) - The dashboard forecasts both sources' daily average with the latest complete day shifted by the weekday pattern, computed from the public index at request time, with its past misses shown alongside.

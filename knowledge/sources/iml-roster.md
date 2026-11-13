@@ -4,7 +4,7 @@ title: IML roster
 description: The public Shelby County IML roster, read 30 records per page with at most two concurrent pages and accepted only when its range, total, and IDs validate.
 resource: https://imljail.shelbycountytn.gov/IML
 tags: [iml, population]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T04:00:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:06:36Z }
 sources:
   - id: readme-l145
@@ -20,9 +20,15 @@ The IML roster supplies the [IML population](../measures/iml-population.md) and 
 # Scan
 
 IML reads at most two pages concurrently and validates
-each page's exact range, the stable total, and unique result IDs before accepting
+each page's exact range and total, and unique result IDs, before accepting
 a complete roster. IML returns 30 records per page, so the number of requests
-varies with roster size. Its scan has a seven-minute budget; population sources share
+varies with roster size. No request field is known to change that page size. The search form's
+only size field is a hidden `quantity`, and on November 13, 2026 a `quantity` of 100 on the
+search and on a later page both still returned 30 rows.
+Rows are ordered by booking number. When the total changes mid-scan, the scan re-reads the
+last accepted page and continues against the new total only if that page is unchanged
+([decision](../decisions/2026-11-13-resume-after-verified-roster-change.md)); pages archived
+after such a change show the new total in their "of N" range. Its scan has a seven-minute budget; population sources share
 a nine-minute deadline so a slow IML scan leaves a bounded allowance for XFER.
 IML logs progress every 20 pages and records successful scan duration. A shifted
 or incomplete roster is rejected and the last good count remains visible. A county

@@ -1,5 +1,12 @@
 # Knowledge bundle update log
 
+## 2026-11-13
+* **Update**: Recorded the November 12 to 13 IML freshness failures in
+  [monitoring and limits](operations/monitoring-and-limits.md) and the
+  [pagination-shift issue](source-quality/iml-pagination-shift.md): pagination shifts during
+  slow evening scans left five roster slots without an observation, two runs hit Cloud
+  Storage write timeouts, and the November 11 fix held.
+
 ## 2026-11-11
 * **Update**: Recorded the [November 11 deployment](deployments/2026-11-11.md) of the
   repeat-visit and supplement-publishing fix, marked the

@@ -5,7 +5,7 @@ description: The IML roster total often changes during a scan, shifting paginati
 tags: [iml, population, cost, data-quality]
 affects: IML roster
 first_seen: 2026-09-23
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-15T16:50:00Z }
+generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T03:10:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: source-quality-l31
@@ -22,6 +22,10 @@ and retried.
 
 # Latest evidence
 
+Nov 11 15:00 UTC to Nov 13 03:00 UTC: 49 pagination shifts (4, 33, and 12 a day) and four
+roster slots missed after retries, all after 22:30 UTC on Nov 12 while scans averaged 220 to
+320 seconds instead of about 130 (collector logs; see
+[monitoring and limits](../operations/monitoring-and-limits.md)).
 Oct 8 to 14: 264 pagination shifts (19, 46, 40, 34, 43, 50, and 32 a day; about 38 a day),
 and 35 roster slots missed after retries (2, 5, 5, 6, 4, 10, and 3 a day); the other five
 failed IML scans that week exceeded the time budget (collector logs). Scans took 108 or

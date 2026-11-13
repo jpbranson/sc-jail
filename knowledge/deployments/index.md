@@ -1,9 +1,11 @@
 # Current
 
-* [November 11 deployment](2026-11-11.md) - Image from main at e37682f that publishes supplement results before the repeat-visit refresh and bounds its history replay; the current deployment as of November 11, 2026.
-* [Retained images and rollback](retained-images.md) - Which container images remain available for rollback under the image cleanup policy, as recorded after the November 11 deployment.
+* [November 13 deployment](2026-11-13.md) - Image from main at da316ed that resumes an IML roster scan after a verified roster change; the current deployment as of November 13, 2026.
+* [Retained images and rollback](retained-images.md) - Which container images remain available for rollback under the image cleanup policy, as recorded after the November 13 deployment.
 
 # Superseded
+
+* [November 11 deployment](2026-11-11.md) - Image from main at e37682f that publishes supplement results before the repeat-visit refresh and bounds its history replay; the deployment from November 11 to November 13, 2026.
 
 * [November 2 deployment](2026-11-02.md) - Image from analysis/time-series-forecast at 89f3ddf that adds the dashboard's population forecast panel; the deployment from November 2 to November 11, 2026.
 * [October 15 deployment](2026-10-15.md) - Image from main at b80fab0 that reports county IML server error pages as server errors; the deployment from October 15 to November 2, 2026.

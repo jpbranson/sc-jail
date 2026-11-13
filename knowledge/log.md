@@ -1,6 +1,12 @@
 # Knowledge bundle update log
 
 ## 2026-11-13
+* **Update**: Recorded the [November 13 deployment](deployments/2026-11-13.md) of the IML
+  scan change, marked the [November 11 record](deployments/2026-11-11.md) superseded, and
+  updated [retained images](deployments/retained-images.md),
+  [cloud deployment](operations/cloud-deployment.md),
+  [monitoring and limits](operations/monitoring-and-limits.md), and the
+  [pagination-shift issue](source-quality/iml-pagination-shift.md).
 * **Creation**: Added the [decision](decisions/2026-11-13-resume-after-verified-roster-change.md)
   to resume an IML scan after a verified roster change. Recorded the investigation behind it
   (booking-number order, where changes land, and replays of archived scans) in the

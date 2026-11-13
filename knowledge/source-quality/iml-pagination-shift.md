@@ -74,5 +74,6 @@ retries used about 11% of collector time (see
 [measured usage and cost](../cost/measured-usage-2026-09-26.md)). Under the
 [November 13 decision](../decisions/2026-11-13-resume-after-verified-roster-change.md), the
 scan instead re-reads the last accepted page. It continues against the new total only if
-that page is unchanged; otherwise it is rejected as before. This takes effect from the first
-deployment that carries it.
+that page is unchanged; otherwise it is rejected as before. It has been live since the
+[November 13 deployment](../deployments/2026-11-13.md) at 04:11 UTC; the 04:30 UTC scan was the
+first to continue after a change (3,304 to 3,305 at row 2,131) and was accepted.

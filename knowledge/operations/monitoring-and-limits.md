@@ -78,7 +78,8 @@ sources:
   20:17 UTC, a genuine alert. The pagination retry behavior was unchanged through November 13.
   A [November 13 decision](../decisions/2026-11-13-resume-after-verified-roster-change.md)
   lets a scan whose total changes only past the pages already read continue instead of
-  failing, from the first deployment that carries it.
+  failing; it is live since the [November 13 deployment](../deployments/2026-11-13.md).
+  Such scans log "IML roster total changed from … earlier pages unchanged, scan continues".
 - On October 15 eight IML roster slots (14:15 to 16:00 UTC) were missed: two pagination
   shifts, then read timeouts from 14:29 to 16:03 UTC, then, from 16:00 to 16:09 UTC, a Java
   stack trace served with HTTP 200. The 16:15 slot succeeded. Such pages are now reported as

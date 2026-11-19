@@ -88,7 +88,12 @@ def create_app(config, store):
     chart_cache, chart_lock = OrderedDict(), threading.Lock()
 
     def state():
-        with cache_lock:
+        # A reload can wait on storage for tens of seconds. Other requests then use the
+        # validated index already held; only a cold instance has to wait for the first read.
+        held = cache["data"]
+        if not cache_lock.acquire(blocking=held is None):
+            return held
+        try:
             if time.monotonic() >= cache["next_attempt"]:
                 try:
                     data, version = read_json(store, "public/index.json")
@@ -118,6 +123,8 @@ def create_app(config, store):
             if cache["data"] is None:
                 raise RuntimeError("No validated dashboard index is available")
             return cache["data"]
+        finally:
+            cache_lock.release()
 
     def chart_version(data):
         """Changes whenever a chart can: new index data or the next 5-minute render window."""

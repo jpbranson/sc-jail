@@ -3,6 +3,7 @@
 import gzip
 import hashlib
 import json
+import logging
 import os
 import time
 import uuid
@@ -12,6 +13,7 @@ from typing import ContextManager, Protocol
 
 from filelock import FileLock, Timeout
 
+log = logging.getLogger(__name__)
 
 class Conflict(RuntimeError):
     pass
@@ -105,11 +107,20 @@ class GCSStore:
             self._maintain_lease()
         for _ in range(3):
             blob = self.bucket.blob(key)
+            started = time.monotonic()
             try:
                 blob.reload(timeout=20, retry=self._retry)
-                return blob.download_as_bytes(
+                described = time.monotonic()
+                content = blob.download_as_bytes(
                     if_generation_match=blob.generation, timeout=20, retry=self._retry
-                ), blob.generation
+                )
+                finished = time.monotonic()
+                if finished - started > 5:
+                    # Names the waiting call: on November 18, 2026 dashboard reads took 21 to 50
+                    # seconds without failing, and nothing recorded which request waited.
+                    log.warning("Slow read of %s: metadata %.1fs, download %.1fs",
+                                key, described - started, finished - described)
+                return content, blob.generation
             except NotFound:
                 return None, None
             except PreconditionFailed:

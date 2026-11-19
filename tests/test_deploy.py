@@ -79,6 +79,12 @@ def test_deployment_preserves_tuning_and_protects_archive():
         if command[:2] == ("run", "deploy"):
             assert any(a.startswith("--update-env-vars=SCJ_BUCKET=") for a in command)
             assert not any(a.startswith("--set-env-vars") for a in command)
+            # One collection at a time; the dashboard matches its four server threads,
+            # which Cloud Run accepts only from 1 vCPU.
+            tuning = (("--cpu=0.25", "--concurrency=1") if command[2] == "sc-jail-collector"
+                      else ("--cpu=1", "--concurrency=4"))
+            assert all(flag in command for flag in tuning)
+            assert sum(a.startswith(("--cpu=", "--concurrency=")) for a in command) == 2
         if command[:3] == ("storage", "buckets", "update") and command[3].endswith("-sc-jail-data"):
             assert "--soft-delete-duration=7d" in command
     collector_admin = [c for c in commands if "roles/storage.objectAdmin" in c

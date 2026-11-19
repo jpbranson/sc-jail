@@ -1,3 +1,4 @@
+import threading
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -257,6 +258,63 @@ def test_warm_index_survives_storage_outage_with_warning_and_backoff(tmp_path, m
     clock[0] = 162
     assert "X-Data-Stale" not in client.get("/").headers
     assert read_json(store, "public/index.json")[0]["sources"]["iml"]["current"]["population"] == 3210
+
+
+def slow_index_store(tmp_path, monkeypatch):
+    """A store whose reads wait until released, as a stalled Cloud Storage read does."""
+    store = LocalStore(tmp_path)
+    write_json(store, "public/index.json", {"sources": {"iml": {"current": {"population": 3210}}}})
+    reading, release, finished = threading.Event(), threading.Event(), []
+    read = store.read
+
+    def stalled(key):
+        reading.set()
+        release.wait(10)
+        finished.append(key)
+        return read(key)
+
+    clock = [100.0]
+    monkeypatch.setattr("sc_jail.web.time.monotonic", lambda: clock[0])
+    return store, stalled, clock, reading, release, finished
+
+
+def population(app, results):
+    results.append(app.test_client().get("/api/status").json["iml"]["current"]["population"])
+
+
+def test_requests_use_the_held_index_while_a_reload_waits_on_storage(tmp_path, monkeypatch):
+    store, stalled, clock, reading, release, finished = slow_index_store(tmp_path, monkeypatch)
+    app = create_app(Config(), store)
+    warm, reloaded = [], []
+    population(app, warm)
+    monkeypatch.setattr(store, "read", stalled)
+    clock[0] = 131
+    reloader = threading.Thread(target=population, args=(app, reloaded))
+    reloader.start()
+    assert reading.wait(5)
+    during = []
+    population(app, during)
+    assert during == [3210] and not finished
+    release.set()
+    reloader.join(5)
+    assert reloaded == [3210]
+
+
+def test_cold_dashboard_waits_for_the_first_index_read(tmp_path, monkeypatch):
+    store, stalled, _, reading, release, finished = slow_index_store(tmp_path, monkeypatch)
+    monkeypatch.setattr(store, "read", stalled)
+    app = create_app(Config(), store)
+    results = []
+    requests = [threading.Thread(target=population, args=(app, results)) for _ in range(2)]
+    requests[0].start()
+    assert reading.wait(5)
+    requests[1].start()
+    requests[1].join(0.3)
+    assert requests[1].is_alive() and not results
+    release.set()
+    for request in requests:
+        request.join(5)
+    assert results == [3210, 3210] and len(finished) == 1
 
 
 def test_chart_cache_uses_version_and_width_buckets(tmp_path, monkeypatch):

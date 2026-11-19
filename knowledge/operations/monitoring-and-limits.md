@@ -3,7 +3,7 @@ type: Reference
 title: Monitoring and limits
 description: Health and freshness endpoints, uptime alerts, the tracker health object, retry behavior, collector time limits, and known alert patterns.
 tags: [monitoring, operations]
-generated: { by: claude-code/claude-fable-5-2, at: 2026-11-19T01:45:00Z }
+generated: { by: claude-code/claude-fable-5-2, at: 2026-11-19T02:37:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: cloud-l467
@@ -146,7 +146,9 @@ sources:
   about 60 to about 1,500 seconds an hour. The owner replaced the instance at 01:33 UTC on
   November 19 (revision `sc-jail-dashboard-00014-js9`, same image and settings). Straight
   after, the page, the freshness endpoints, and all six charts returned 200, and six chart
-  requests sent together finished within 4.4 seconds. That ties the fault to the one
+  requests sent together finished within 4.4 seconds. Over the next 33 minutes all 100
+  dashboard requests returned 200 (median 0.01 seconds, 95th percentile 1.2), and all four
+  uptime checks passed from 01:46 UTC. That ties the fault to the one
   instance; its cause inside the instance was not found.
 - **Repeat-visit backlog runbook.** When `/api/freshness/repeat_visits` stays 503 and
   collector logs show "Repeat-visit refresh deferred" or "Collector lease is too close to
@@ -160,8 +162,8 @@ sources:
   roster. Original observation times are always preserved.
 - A warm dashboard retains the last validated aggregate index during a storage
   outage, marks responses stale, and backs off retries. A cold instance without
-  cached data returns 503. From the image after the
-  [November 19 decision](../decisions/2026-11-19-serve-held-index-during-reload.md), requests
+  cached data returns 503. Since the [November 19 deployment](../deployments/2026-11-19.md) and its
+  [decision](../decisions/2026-11-19-serve-held-index-during-reload.md), requests
   that arrive during a reload use the index already held, the dashboard accepts four
   requests at once, and a Cloud Storage read over five seconds logs "Slow read of …" with
   its metadata and download times. Chart output is bounded and cached by index revision,

@@ -1,6 +1,6 @@
 # 2026-11-19
 
-* [Serve the held index while a dashboard reload waits](2026-11-19-serve-held-index-during-reload.md) - While one dashboard request reloads the public index, other requests use the index already held, and the dashboard accepts four requests at once, so a slow storage read no longer blocks pages and charts.
+* [Serve the held index while a dashboard reload waits](2026-11-19-serve-held-index-during-reload.md) - While one dashboard request reloads the public index, other requests use the index already held, and the dashboard runs on 1 vCPU and accepts four requests at once, so a slow storage read no longer blocks pages and charts.
 
 # 2026-11-13
 

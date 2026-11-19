@@ -3,7 +3,7 @@ type: Architecture
 title: Cloud architecture
 description: One private Cloud Run collector, one public read-only dashboard, one Scheduler job, a private Storage archive, and a daily backup, all scaling to zero.
 tags: [cloud, storage, security]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-10-05T01:54:59Z }
+generated: { by: claude-code/claude-fable-5-2, at: 2026-11-19T02:37:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: cloud-l133
@@ -19,8 +19,11 @@ one Cloud Scheduler job, a private regional Cloud Storage archive, and a separat
 daily Storage Transfer Service backup to another private bucket in `us-central1`.
 Cloud Monitoring checks freshness and backup failures. Both Cloud Run services
 have zero minimum instances, a configured maximum of one instance per revision,
-0.25 vCPU, 512 MiB RAM, request-based billing, and
-first-generation execution. The collector lease also prevents overlapping
+512 MiB RAM, request-based billing, and
+first-generation execution. The collector has 0.25 vCPU and takes one request at a time.
+Since the [November 19 deployment](../deployments/2026-11-19.md) the dashboard has 1 vCPU
+and takes four requests at once, because Cloud Run allows concurrency above 1 only from
+1 vCPU. The collector lease also prevents overlapping
 collection across revisions.
 The collector runs synchronously inside an authenticated request; it does not
 depend on background threads surviving after a request ends.

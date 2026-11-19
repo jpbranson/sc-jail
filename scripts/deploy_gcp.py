@@ -225,11 +225,12 @@ class Deployment:
                 REGION,
                 "--service-account",
                 accounts[role],
-                "--cpu=0.25",
-                "--memory=512Mi",
                 # The dashboard runs four server threads, so cached pages and charts are
-                # still served while one request waits on a storage reload.
-                "--concurrency=1" if role == "collector" else "--concurrency=4",
+                # still served while one request waits on a storage reload. Cloud Run
+                # allows concurrency above 1 only from 1 vCPU.
+                *(("--cpu=0.25", "--concurrency=1") if role == "collector"
+                  else ("--cpu=1", "--concurrency=4")),
+                "--memory=512Mi",
                 "--min-instances=0",
                 "--max-instances=1",
                 "--execution-environment=gen1",

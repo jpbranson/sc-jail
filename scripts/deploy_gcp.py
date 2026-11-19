@@ -227,7 +227,9 @@ class Deployment:
                 accounts[role],
                 "--cpu=0.25",
                 "--memory=512Mi",
-                "--concurrency=1",
+                # The dashboard runs four server threads, so cached pages and charts are
+                # still served while one request waits on a storage reload.
+                "--concurrency=1" if role == "collector" else "--concurrency=4",
                 "--min-instances=0",
                 "--max-instances=1",
                 "--execution-environment=gen1",

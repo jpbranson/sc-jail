@@ -58,6 +58,21 @@ def test_gcs_generation_checks_and_immutable_dedup():
     assert client.read("private/blob")[0] == b"first"
 
 
+def test_slow_read_logs_which_call_waited(monkeypatch, caplog):
+    client = store(Bucket())
+    write_json(client, "public/index.json", {"n": 1})
+    moments = iter([100.0, 121.0, 123.5])
+    monkeypatch.setattr("sc_jail.storage.time.monotonic", lambda: next(moments))
+    with caplog.at_level("WARNING", logger="sc_jail.storage"):
+        assert read_json(client, "public/index.json")[0] == {"n": 1}
+    assert caplog.messages == ["Slow read of public/index.json: metadata 21.0s, download 2.5s"]
+    caplog.clear()
+    moments = iter([200.0, 200.4, 200.9])
+    with caplog.at_level("WARNING", logger="sc_jail.storage"):
+        read_json(client, "public/index.json")
+    assert not caplog.messages
+
+
 def test_gcs_concurrent_collector_is_rejected():
     bucket = Bucket()
     one, two = store(bucket), store(bucket)

@@ -1,5 +1,19 @@
 # Knowledge bundle update log
 
+## 2026-11-19
+* **Creation**: Added the [decision](decisions/2026-11-19-serve-held-index-during-reload.md)
+  to serve the held index while a dashboard reload waits, raise dashboard concurrency to 4,
+  and log slow Cloud Storage reads; noted it in
+  [monitoring and limits](operations/monitoring-and-limits.md). Not yet deployed.
+* **Update**: Noted the November 19 dashboard restart (revision
+  `sc-jail-dashboard-00014-js9`, same image) in the
+  [November 13 deployment](deployments/2026-11-13.md) and
+  [cloud deployment](operations/cloud-deployment.md).
+* **Update**: Recorded the November 18 dashboard slowdown in
+  [monitoring and limits](operations/monitoring-and-limits.md): index reloads on one
+  dashboard instance took 21 to 50 seconds, so chart requests queued and failed, while the
+  collector stayed healthy.
+
 ## 2026-11-13
 * **Update**: Recorded the [November 13 deployment](deployments/2026-11-13.md) of the IML
   scan change, marked the [November 11 record](deployments/2026-11-11.md) superseded, and

@@ -3,7 +3,7 @@ type: Reference
 title: Monitoring and limits
 description: Health and freshness endpoints, uptime alerts, the tracker health object, retry behavior, collector time limits, and known alert patterns.
 tags: [monitoring, operations]
-generated: { by: claude-code/claude-opus-5-5, at: 2026-11-13T04:00:00Z }
+generated: { by: claude-code/claude-fable-5-2, at: 2026-11-19T01:45:00Z }
 verified: { by: claude-code/claude-opus-5-5, at: 2026-10-05T02:10:00Z }
 sources:
   - id: cloud-l467
@@ -130,6 +130,24 @@ sources:
   500 when a `public/index.json` write hit Cloud Storage's 20-second read timeout, each after
   the population was committed. Slow evenings narrow the margin: the median whole-run time on
   November 13 to 03:00 UTC was about 450 seconds, against the 570-second deadline.
+- From 15:41 UTC on November 18 the dashboard's charts stopped loading while collection
+  stayed healthy. On one dashboard instance (started November 17, 13:11 UTC) each reload of
+  `public/index.json` took 21 to 50 seconds instead of under one. The reload runs inside a
+  request every 30 seconds, and the dashboard serves one request at a time on one instance,
+  so other requests queued and Cloud Run answered them with HTTP 429 or 504 (172 and 7 by
+  01:10 UTC on November 19). CPU stayed at 2% to 5% and memory at 45%, and no error
+  was logged: the time was spent waiting on Cloud Storage. Response times split into under
+  0.3 seconds (817) or 20 seconds and more (420), which matches the 20-second storage
+  timeout; which call waited is not known. No deployment or configuration change preceded
+  it, the index grew at its usual 65 KB a day, and the same revision had run normally since
+  November 13. The collector ran four successful slots an hour throughout, with unchanged
+  run times. The four uptime checks passed 20% to 80% of the time from 16:00 UTC, so their
+  failures then describe the dashboard, not the data. Billable dashboard time rose from
+  about 60 to about 1,500 seconds an hour. The owner replaced the instance at 01:33 UTC on
+  November 19 (revision `sc-jail-dashboard-00014-js9`, same image and settings). Straight
+  after, the page, the freshness endpoints, and all six charts returned 200, and six chart
+  requests sent together finished within 4.4 seconds. That ties the fault to the one
+  instance; its cause inside the instance was not found.
 - **Repeat-visit backlog runbook.** When `/api/freshness/repeat_visits` stays 503 and
   collector logs show "Repeat-visit refresh deferred" or "Collector lease is too close to
   expiry": pause the `sc-jail-quarter-hour` Scheduler job, wait until
@@ -142,7 +160,11 @@ sources:
   roster. Original observation times are always preserved.
 - A warm dashboard retains the last validated aggregate index during a storage
   outage, marks responses stale, and backs off retries. A cold instance without
-  cached data returns 503. Chart output is bounded and cached by index revision,
+  cached data returns 503. From the image after the
+  [November 19 decision](../decisions/2026-11-19-serve-held-index-during-reload.md), requests
+  that arrive during a reload use the index already held, the dashboard accepts four
+  requests at once, and a Cloud Storage read over five seconds logs "Slow read of …" with
+  its metadata and download times. Chart output is bounded and cached by index revision,
   range, width bucket, and time bucket. An open page refreshes its text in place every
   60 seconds; each chart is requested once at its displayed width and replaced, after
   it has loaded, only when the index or 5-minute render window changes. Long-range

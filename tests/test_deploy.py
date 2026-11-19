@@ -79,6 +79,9 @@ def test_deployment_preserves_tuning_and_protects_archive():
         if command[:2] == ("run", "deploy"):
             assert any(a.startswith("--update-env-vars=SCJ_BUCKET=") for a in command)
             assert not any(a.startswith("--set-env-vars") for a in command)
+            # One collection at a time; the dashboard matches its four server threads.
+            assert ("--concurrency=1" if command[2] == "sc-jail-collector"
+                    else "--concurrency=4") in command
         if command[:3] == ("storage", "buckets", "update") and command[3].endswith("-sc-jail-data"):
             assert "--soft-delete-duration=7d" in command
     collector_admin = [c for c in commands if "roles/storage.objectAdmin" in c
